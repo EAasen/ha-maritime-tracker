@@ -535,6 +535,8 @@ class TestKystverketHTTP:
             "modelType": "Full",
             "modelFormat": "Geojson",
         }
+        # The token obtained from the OAuth2 exchange must be forwarded to the AIS endpoint.
+        assert kwargs["headers"]["Authorization"] == "Bearer token"
 
 
 # ---------------------------------------------------------------------------
