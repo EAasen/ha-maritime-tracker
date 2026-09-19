@@ -17,11 +17,7 @@ from homeassistant.const import __version__ as HA_VERSION
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .const import (
-    CONF_BARENTSWATCH_CLIENT_ID,
-    CONF_BARENTSWATCH_CLIENT_SECRET,
-    DOMAIN,
-)
+from .const import CONF_BARENTSWATCH_CLIENT_ID, CONF_BARENTSWATCH_CLIENT_SECRET, DOMAIN
 from .coordinator import MarineTrafficCoordinator, VesselClient
 from .kystverket_client import KystverketClient
 
