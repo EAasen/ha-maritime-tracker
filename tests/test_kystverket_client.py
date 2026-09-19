@@ -329,3 +329,12 @@ async def test_fetch_payload_raises_on_timeout() -> None:
     with patch("asyncio.sleep", new_callable=AsyncMock):
         with pytest.raises(aiohttp.ServerTimeoutError):
             await client._fetch_payload("token", 60, 6, 59, 5)
+@pytest.mark.asyncio
+async def test_async_validate_credentials_requests_access_token() -> None:
+    """Credential validation should reuse the token acquisition path."""
+    client = _make_client()
+    client._get_access_token = AsyncMock(return_value="token")
+
+    await client.async_validate_credentials()
+
+    client._get_access_token.assert_awaited_once()

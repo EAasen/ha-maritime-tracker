@@ -35,6 +35,10 @@ class KystverketAuthError(RuntimeError):
     """
 
 
+class InvalidAuthError(KystverketAuthError):
+    """Raised when BarentsWatch credentials are rejected."""
+
+
 class KystverketClient:
     """Async client for Kystverket live AIS data via BarentsWatch."""
 
@@ -73,6 +77,10 @@ class KystverketClient:
             for vessel in all_vessels
             if _haversine_km(latitude, longitude, vessel.latitude, vessel.longitude) <= radius_km
         ]
+
+    async def async_validate_credentials(self) -> None:
+        """Validate the configured BarentsWatch credentials."""
+        await self._get_access_token()
 
     async def get_vessels_in_box(
         self,
@@ -146,7 +154,6 @@ class KystverketClient:
         except aiohttp.ClientConnectionError as exc:
             _LOGGER.error("Connection error obtaining BarentsWatch token: %s", exc)
             raise
-
         self._access_token = str(payload["access_token"])
         expires_in = int(payload.get("expires_in", 3600))
         self._token_expiry = datetime.now(UTC) + timedelta(
