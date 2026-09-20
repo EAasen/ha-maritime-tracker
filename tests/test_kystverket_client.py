@@ -8,6 +8,7 @@ import aiohttp
 import pytest
 
 from custom_components.marinetraffic_tracker.kystverket_client import (
+    InvalidAuthError,
     KystverketAuthError,
     KystverketClient,
 )
@@ -92,6 +93,29 @@ def test_parse_response_accepts_list_payload() -> None:
 
     assert len(vessels) == 1
     assert vessels[0].destination == "BERGEN"
+
+
+def test_parse_response_skips_malformed_rows() -> None:
+    """A malformed row must not prevent valid rows from being returned."""
+    client = _make_client()
+    vessels = client._parse_response(
+        [
+            _BASE_ROW,
+            {"mmsi": "bad-position", "latitude": "not-a-number", "longitude": 5.0},
+            "not-an-object",
+        ]
+    )
+
+    assert len(vessels) == 1
+    assert vessels[0].mmsi == "123456789"
+
+
+def test_parse_row_rejects_non_finite_coordinates() -> None:
+    """NaN and infinity coordinates must not enter the vessel registry."""
+    client = _make_client()
+
+    assert client._parse_row({**_BASE_ROW, "latitude": "nan"}) is None
+    assert client._parse_row({**_BASE_ROW, "longitude": "inf"}) is None
 
 
 def test_parse_row_supports_open_positions_field_names() -> None:
@@ -241,6 +265,20 @@ async def test_fetch_payload_returns_none_on_401_retry() -> None:
 
 
 @pytest.mark.asyncio
+async def test_get_vessels_raises_auth_error_after_refresh_retry_401() -> None:
+    """Two 401 responses must surface as an authentication error."""
+    session = MagicMock()
+    resp = _make_mock_response(401)
+    session.get = MagicMock(return_value=resp)
+
+    client = _make_client_with_session(session)
+    client._get_access_token = AsyncMock(side_effect=["expired-token", "fresh-token"])
+
+    with pytest.raises(KystverketAuthError, match="after refreshing"):
+        await client.get_vessels_in_box(60, 6, 59, 5)
+
+
+@pytest.mark.asyncio
 async def test_fetch_payload_raises_runtime_error_on_403() -> None:
     """A 403 response should raise KystverketAuthError with a descriptive message."""
     session = MagicMock()
@@ -312,6 +350,21 @@ async def test_get_access_token_raises_on_403() -> None:
     client._token_expiry = None
 
     with pytest.raises(KystverketAuthError, match="403"):
+        await client._get_access_token()
+
+
+@pytest.mark.asyncio
+async def test_get_access_token_classifies_invalid_credentials() -> None:
+    """Token endpoint credential failures must use the invalid-auth subtype."""
+    session = MagicMock()
+    resp = _make_mock_response(401)
+    session.post = MagicMock(return_value=resp)
+
+    client = _make_client_with_session(session)
+    client._access_token = None
+    client._token_expiry = None
+
+    with pytest.raises(InvalidAuthError, match="401"):
         await client._get_access_token()
 
 
