@@ -59,6 +59,13 @@ Enter the **Client ID** and **Client Secret** you obtained in step 1.
 > when requesting a token — pasting an already-encoded value (e.g. `%40` instead of
 > `@`) will be double-encoded and cause authentication to fail.
 
+> **Register an AIS-client, not an API-client.** BarentsWatch has two client types.
+> Only a client registered as an **AIS-client** can request the `ais` scope this
+> integration uses. Using an API-client's credentials causes the token request to
+> fail with **HTTP 400 Bad Request**. Check the client type on
+> [barentswatch.no/minside](https://www.barentswatch.no/minside/) and re-register
+> if needed.
+
 ### Step 4 — Update settings and filters
 
 | Field | Default | Description |

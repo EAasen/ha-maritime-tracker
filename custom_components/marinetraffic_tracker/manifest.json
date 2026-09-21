@@ -4,10 +4,10 @@
   "codeowners": ["@EAasen"],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/EAasen/ha-marinetraffic-tracker",
+  "documentation": "https://github.com/EAasen/ha-maritime-tracker",
   "homeassistant": "2023.1.0",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/EAasen/ha-marinetraffic-tracker/issues",
+  "issue_tracker": "https://github.com/EAasen/ha-maritime-tracker/issues",
   "requirements": [],
   "version": "1.0.0"
 }

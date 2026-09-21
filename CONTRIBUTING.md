@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for considering contributing to `ha-marinetraffic-tracker`!
+Thank you for considering contributing to `ha-maritime-tracker`!
 
 ## Code Style
 

@@ -132,19 +132,24 @@ class KystverketClient:
                 timeout=_REQUEST_TIMEOUT,
             ) as resp:
                 if resp.status == 400:
+                    detail = await _safe_error_detail(resp)
                     raise InvalidAuthError(
                         "BarentsWatch token request failed (HTTP 400). "
-                        "Check that your Client ID and Client Secret are correct."
+                        "Check that your Client ID and Client Secret are correct, "
+                        "and that the client is registered as an AIS client with the "
+                        f"'ais' scope enabled on barentswatch.no/minside.{detail}"
                     )
                 if resp.status == 401:
+                    detail = await _safe_error_detail(resp)
                     raise InvalidAuthError(
                         "BarentsWatch authentication failed (HTTP 401). "
-                        "The Client ID or Client Secret is invalid."
+                        f"The Client ID or Client Secret is invalid.{detail}"
                     )
                 if resp.status == 403:
+                    detail = await _safe_error_detail(resp)
                     raise InvalidAuthError(
                         "BarentsWatch token request forbidden (HTTP 403). "
-                        "The Client ID or Client Secret lacks the required permissions."
+                        f"The Client ID or Client Secret lacks the required permissions.{detail}"
                     )
                 resp.raise_for_status()
                 payload = await resp.json(content_type=None)
@@ -403,6 +408,24 @@ class KystverketClient:
             last_seen=last_seen or datetime.now(UTC),
             source="kystverket",
         )
+
+
+async def _safe_error_detail(resp: aiohttp.ClientResponse) -> str:
+    """Return a formatted ' Server said: ...' suffix from an error response body.
+
+    Best-effort only: BarentsWatch typically returns an OAuth2-style JSON body
+    such as ``{"error": "invalid_scope", ...}`` on failed token requests. This
+    is surfaced to the user/logs to make the root cause (e.g. wrong client
+    type, missing scope) much faster to diagnose than a bare status code.
+    """
+    try:
+        text = await resp.text()
+    except (aiohttp.ClientError, UnicodeDecodeError):
+        return ""
+    text = text.strip()
+    if not text:
+        return ""
+    return f" Server said: {text[:300]}"
 
 
 def _get_first(row: dict[str, Any], *keys: str) -> Any:

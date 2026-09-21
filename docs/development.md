@@ -17,8 +17,8 @@ This guide is for contributors who want to work on the Norwegian Maritime Tracke
 ### 1. Fork and clone the repository
 
 ```bash
-git clone https://github.com/<your-username>/ha-marinetraffic-tracker.git
-cd ha-marinetraffic-tracker
+git clone https://github.com/<your-username>/ha-maritime-tracker.git
+cd ha-maritime-tracker
 ```
 
 ### 2. Create a virtual environment

@@ -47,8 +47,9 @@ Restart Home Assistant, reproduce the problem, and then check the logs:
 
 1. Copy the **Client ID** and **Client Secret** again directly from the BarentsWatch portal — trailing whitespace is a common cause.
 2. Make sure the **Client ID** is pasted in its plain form (e.g. `your.email@example.com:app-name`), **not** URL-encoded (e.g. `your.email%40example.com%3Aapp-name`). The integration encodes the request itself, so a pre-encoded value gets double-encoded and is rejected.
-3. Verify your BarentsWatch application has the **AIS** API permission enabled.
-4. Try logging into <https://www.barentswatch.no/bwapi/> with the credentials to confirm they work.
+3. **Confirm your client was registered as an "AIS-client", not an "API-client".** On [barentswatch.no/minside](https://www.barentswatch.no/minside/), when self-registering a client you must choose the client type matching the API you need. An API-client cannot obtain a token with `scope=ais` and will be rejected by the token endpoint with **HTTP 400 Bad Request** (often `invalid_scope` or `invalid_client` in the response body). If unsure, delete the client and re-register it choosing the AIS-client type.
+4. Check the Home Assistant log for the **"Server said: ..."** detail appended to the error — it echoes BarentsWatch's raw error body (e.g. `invalid_scope`, `invalid_client`) and pinpoints the exact rejection reason.
+5. Try logging into <https://www.barentswatch.no/bwapi/> with the credentials to confirm they work.
 
 ---
 
@@ -126,7 +127,7 @@ If none of the above solutions resolve your problem:
 
 1. Collect the debug logs (see *Enabling Debug Logs* above).
 2. Note your Home Assistant version, integration version, and configuration options.
-3. Open an issue at <https://github.com/EAasen/ha-marinetraffic-tracker/issues> with:
+3. Open an issue at <https://github.com/EAasen/ha-maritime-tracker/issues> with:
    - A clear description of the problem.
    - Steps to reproduce.
    - Relevant log excerpts (redact your credentials).

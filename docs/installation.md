@@ -16,7 +16,7 @@ This guide covers installing the Norwegian Maritime Tracker integration into Hom
 
 1. Open HACS in your Home Assistant sidebar.
 2. Click the **⋮ (three-dot menu)** in the top-right corner and choose **Custom repositories**.
-3. Paste `https://github.com/EAasen/ha-marinetraffic-tracker` in the **Repository** field, select **Integration** as the category, and click **Add**.
+3. Paste `https://github.com/EAasen/ha-maritime-tracker` in the **Repository** field, select **Integration** as the category, and click **Add**.
 4. Search for **Norwegian Maritime Tracker** in HACS and click **Download**.
 5. **Restart Home Assistant** (Settings → System → Restart).
 6. After restart, add the integration:
@@ -29,7 +29,7 @@ This guide covers installing the Norwegian Maritime Tracker integration into Hom
 
 Use this method if you do not have HACS installed.
 
-1. Download the latest release from the [Releases page](https://github.com/EAasen/ha-marinetraffic-tracker/releases).
+1. Download the latest release from the [Releases page](https://github.com/EAasen/ha-maritime-tracker/releases).
 2. Unzip the archive and locate the `custom_components/marinetraffic_tracker` directory.
 3. Copy the entire `marinetraffic_tracker` folder into `/config/custom_components/` on your Home Assistant instance.
    - Your final path should look like `/config/custom_components/marinetraffic_tracker/`.

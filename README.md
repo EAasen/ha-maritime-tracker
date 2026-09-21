@@ -1,12 +1,12 @@
 # Norwegian Maritime Tracker for Home Assistant 🚢
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
-[![Tests](https://github.com/EAasen/ha-marinetraffic-tracker/actions/workflows/tests.yml/badge.svg)](https://github.com/EAasen/ha-marinetraffic-tracker/actions/workflows/tests.yml)
-[![Lint](https://github.com/EAasen/ha-marinetraffic-tracker/actions/workflows/lint.yml/badge.svg)](https://github.com/EAasen/ha-marinetraffic-tracker/actions/workflows/lint.yml)
-[![Validate](https://github.com/EAasen/ha-marinetraffic-tracker/actions/workflows/validate.yml/badge.svg)](https://github.com/EAasen/ha-marinetraffic-tracker/actions/workflows/validate.yml)
+[![Tests](https://github.com/EAasen/ha-maritime-tracker/actions/workflows/tests.yml/badge.svg)](https://github.com/EAasen/ha-maritime-tracker/actions/workflows/tests.yml)
+[![Lint](https://github.com/EAasen/ha-maritime-tracker/actions/workflows/lint.yml/badge.svg)](https://github.com/EAasen/ha-maritime-tracker/actions/workflows/lint.yml)
+[![Validate](https://github.com/EAasen/ha-maritime-tracker/actions/workflows/validate.yml/badge.svg)](https://github.com/EAasen/ha-maritime-tracker/actions/workflows/validate.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![CI](https://github.com/EAasen/ha-marinetraffic-tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/EAasen/ha-marinetraffic-tracker/actions/workflows/ci.yml)
-[![HA Version Compatibility](https://github.com/EAasen/ha-marinetraffic-tracker/actions/workflows/ha-version-matrix.yml/badge.svg)](https://github.com/EAasen/ha-marinetraffic-tracker/actions/workflows/ha-version-matrix.yml)
+[![CI](https://github.com/EAasen/ha-maritime-tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/EAasen/ha-maritime-tracker/actions/workflows/ci.yml)
+[![HA Version Compatibility](https://github.com/EAasen/ha-maritime-tracker/actions/workflows/ha-version-matrix.yml/badge.svg)](https://github.com/EAasen/ha-maritime-tracker/actions/workflows/ha-version-matrix.yml)
 
 Official Kystverket AIS maritime tracker for Home Assistant. Real-time vessel tracking in Norwegian waters using the Norwegian Coastal Administration live AIS feed exposed through BarentsWatch.
 
@@ -28,7 +28,7 @@ Official Kystverket AIS maritime tracker for Home Assistant. Real-time vessel tr
 ### 1. Install via HACS
 
 1. Open **HACS** in Home Assistant.
-2. Click **⋮ → Custom repositories**, add `https://github.com/EAasen/ha-marinetraffic-tracker`, category **Integration**.
+2. Click **⋮ → Custom repositories**, add `https://github.com/EAasen/ha-maritime-tracker`, category **Integration**.
 3. Install **Norwegian Maritime Tracker** and **restart Home Assistant**.
 
 > **Manual install:** copy `custom_components/marinetraffic_tracker/` into `/config/custom_components/` and restart.
