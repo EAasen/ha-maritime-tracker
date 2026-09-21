@@ -19,6 +19,7 @@ from custom_components.marinetraffic_tracker.config_flow import (
     _credentials_schema,
     _options_schema,
 )
+from custom_components.marinetraffic_tracker.kystverket_client import KystverketAuthError
 from custom_components.marinetraffic_tracker.const import (
     CONF_BARENTSWATCH_CLIENT_ID,
     CONF_BARENTSWATCH_CLIENT_SECRET,
@@ -44,6 +45,7 @@ from custom_components.marinetraffic_tracker.const import (
     TRACKING_MODE_BOX,
     TRACKING_MODE_RADIUS,
 )
+from custom_components.marinetraffic_tracker.kystverket_client import KystverketAuthError
 
 
 def _make_config_flow(*, home_lat: float = 59.9, home_lon: float = 10.7) -> MarineTrafficConfigFlow:
@@ -189,6 +191,29 @@ async def test_credentials_step_reports_invalid_auth(monkeypatch: pytest.MonkeyP
     assert result["type"] == "form"
     assert result["step_id"] == "credentials"
     assert result["errors"]["base"] == "invalid_auth"
+
+
+@pytest.mark.asyncio
+async def test_validate_credentials_maps_client_auth_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Authentication exceptions from the client must become a flow error."""
+
+    class AuthFailingClient:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            pass
+
+        async def async_validate_credentials(self) -> None:
+            raise KystverketAuthError("invalid credentials")
+
+    monkeypatch.setattr(config_flow, "KystverketClient", AuthFailingClient)
+    monkeypatch.setattr(config_flow, "async_get_clientsession", MagicMock())
+
+    result = await config_flow._async_validate_credentials(
+        MagicMock(), "client-id", "client-secret"
+    )
+
+    assert result == "invalid_auth"
 
 
 @pytest.mark.asyncio

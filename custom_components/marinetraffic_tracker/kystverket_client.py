@@ -132,17 +132,17 @@ class KystverketClient:
                 timeout=_REQUEST_TIMEOUT,
             ) as resp:
                 if resp.status == 400:
-                    raise KystverketAuthError(
+                    raise InvalidAuthError(
                         "BarentsWatch token request failed (HTTP 400). "
                         "Check that your Client ID and Client Secret are correct."
                     )
                 if resp.status == 401:
-                    raise KystverketAuthError(
+                    raise InvalidAuthError(
                         "BarentsWatch authentication failed (HTTP 401). "
                         "The Client ID or Client Secret is invalid."
                     )
                 if resp.status == 403:
-                    raise KystverketAuthError(
+                    raise InvalidAuthError(
                         "BarentsWatch token request forbidden (HTTP 403). "
                         "The Client ID or Client Secret lacks the required permissions."
                     )
@@ -200,6 +200,11 @@ class KystverketClient:
                             "BarentsWatch returned 401 — token may have expired; will re-auth"
                         )
                         return None
+                    if resp.status == 401:
+                        raise KystverketAuthError(
+                            "BarentsWatch API authentication failed (HTTP 401) "
+                            "after refreshing the access token."
+                        )
                     if resp.status == 403:
                         _LOGGER.error(
                             "BarentsWatch returned HTTP 403 Forbidden. "
@@ -303,7 +308,14 @@ class KystverketClient:
 
         vessels: list[VesselData] = []
         for row in rows:
-            vessel = self._parse_row(row)
+            if not isinstance(row, dict):
+                _LOGGER.debug("Skipping non-object Kystverket vessel row: %r", row)
+                continue
+            try:
+                vessel = self._parse_row(row)
+            except (AttributeError, TypeError, ValueError, OverflowError) as exc:
+                _LOGGER.debug("Failed to parse Kystverket vessel row %s: %s", row, exc)
+                continue
             if vessel is not None:
                 vessels.append(vessel)
         return vessels
@@ -323,9 +335,14 @@ class KystverketClient:
         if not mmsi:
             return None
 
-        lat = _get_first(row, "latitude", "lat")
-        lon = _get_first(row, "longitude", "lon")
-        if lat is None or lon is None:
+        latitude = _safe_float(_get_first(row, "latitude", "lat"))
+        longitude = _safe_float(_get_first(row, "longitude", "lon"))
+        if (
+            latitude is None
+            or longitude is None
+            or not math.isfinite(latitude)
+            or not math.isfinite(longitude)
+        ):
             return None
 
         name = str(_get_first(row, "name", "shipName") or "").strip() or f"Vessel {mmsi}"
@@ -358,8 +375,8 @@ class KystverketClient:
             mmsi=mmsi,
             name=name,
             vessel_type=_safe_int(_get_first(row, "shipType", "type")) or 0,
-            latitude=float(lat),
-            longitude=float(lon),
+            latitude=latitude,
+            longitude=longitude,
             heading=heading,
             course=_safe_int(_get_first(row, "courseOverGround", "cog", "course")),
             speed=_safe_float(_get_first(row, "speedOverGround", "sog", "speed")),

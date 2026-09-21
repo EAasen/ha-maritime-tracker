@@ -43,7 +43,7 @@ from .const import (
     TRACKING_MODE_RADIUS,
     VESSEL_TYPE_LABELS,
 )
-from .kystverket_client import InvalidAuthError, KystverketClient
+from .kystverket_client import KystverketAuthError, KystverketClient
 
 _LOGGER = logging.getLogger(__name__)
 _CONF_LOCATION = "location"
@@ -221,7 +221,7 @@ async def _async_validate_credentials(
     )
     try:
         await client.async_validate_credentials()
-    except InvalidAuthError:
+    except KystverketAuthError:
         return "invalid_auth"
     except (aiohttp.ClientError, TimeoutError):
         return "cannot_connect"

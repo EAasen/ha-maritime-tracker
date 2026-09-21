@@ -46,8 +46,9 @@ Restart Home Assistant, reproduce the problem, and then check the logs:
 **Fixes:**
 
 1. Copy the **Client ID** and **Client Secret** again directly from the BarentsWatch portal — trailing whitespace is a common cause.
-2. Verify your BarentsWatch application has the **AIS** API permission enabled.
-3. Try logging into <https://www.barentswatch.no/bwapi/> with the credentials to confirm they work.
+2. Make sure the **Client ID** is pasted in its plain form (e.g. `your.email@example.com:app-name`), **not** URL-encoded (e.g. `your.email%40example.com%3Aapp-name`). The integration encodes the request itself, so a pre-encoded value gets double-encoded and is rejected.
+3. Verify your BarentsWatch application has the **AIS** API permission enabled.
+4. Try logging into <https://www.barentswatch.no/bwapi/> with the credentials to confirm they work.
 
 ---
 

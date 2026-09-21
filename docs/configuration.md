@@ -53,6 +53,12 @@ Enter four decimal-degree values:
 
 Enter the **Client ID** and **Client Secret** you obtained in step 1.
 
+> **Do not URL-encode the Client ID.** BarentsWatch Client IDs typically look like
+> `your.email@example.com:app-name`. Paste it exactly as shown on the BarentsWatch
+> portal (with a literal `@` and `:`). The integration URL-encodes the value itself
+> when requesting a token — pasting an already-encoded value (e.g. `%40` instead of
+> `@`) will be double-encoded and cause authentication to fail.
+
 ### Step 4 — Update settings and filters
 
 | Field | Default | Description |
