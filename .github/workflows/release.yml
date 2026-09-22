@@ -49,12 +49,12 @@ jobs:
           python -m json.tool hacs.json > /dev/null
 
       - name: Run HACS validation
-        uses: hacs/action@1.0.0
+        uses: hacs/action@22.5.0
         with:
           category: integration
 
       - name: Run hassfest validation
-        uses: home-assistant/actions/hassfest@22.5.0
+        uses: home-assistant/actions/hassfest@master
 
   release:
     name: Create GitHub release
