@@ -420,7 +420,10 @@ async def _safe_error_detail(resp: aiohttp.ClientResponse) -> str:
     """
     try:
         text = await resp.text()
-    except (aiohttp.ClientError, UnicodeDecodeError):
+    except (aiohttp.ClientError, UnicodeDecodeError, TypeError, AttributeError):
+        # TypeError/AttributeError guard against test doubles or unexpected
+        # response objects that don't implement an awaitable .text(); this
+        # helper must never break the caller's error handling.
         return ""
     text = text.strip()
     if not text:
