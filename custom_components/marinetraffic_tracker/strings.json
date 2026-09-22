@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Norwegian Maritime Tracker",
-        "description": "Before continuing, create a free BarentsWatch account and AIS client at https://www.barentswatch.no/minside/. Developer documentation is available at https://developer.barentswatch.no/."
+        "description": "Before continuing, create a free BarentsWatch account and AIS client on the BarentsWatch website (see the integration documentation for links)."
       },
       "credentials": {
         "title": "BarentsWatch Credentials",
