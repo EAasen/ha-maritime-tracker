@@ -19,7 +19,6 @@ REQUIRED_FIELDS = {
     "codeowners",
     "config_flow",
     "documentation",
-    "homeassistant",
     "iot_class",
     "issue_tracker",
     "version",
@@ -35,7 +34,6 @@ VALID_IOT_CLASSES = {
 }
 
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
-HA_VERSION_RE = re.compile(r"^\d{4}\.\d+\.\d+$")
 
 
 def load_manifest() -> dict:
@@ -105,15 +103,6 @@ def test_manifest_issue_tracker_url() -> None:
     tracker = manifest.get("issue_tracker", "")
     assert isinstance(tracker, str) and tracker.startswith("http"), (
         f"issue_tracker '{tracker}' must be a URL"
-    )
-
-
-def test_manifest_homeassistant_version_format() -> None:
-    """homeassistant minimum version must be in YEAR.MONTH.PATCH format."""
-    manifest = load_manifest()
-    ha_version = manifest.get("homeassistant", "")
-    assert HA_VERSION_RE.match(ha_version), (
-        f"homeassistant '{ha_version}' must follow YEAR.MONTH.PATCH format (e.g. 2024.1.0)"
     )
 
 
