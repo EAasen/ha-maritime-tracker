@@ -153,7 +153,7 @@ class MarineTrafficCountSensor(MarineTrafficEntity, SensorEntity):
         vessels_data = self.coordinator.data or {}
         anchored_data = self.coordinator.anchored_vessels
 
-        def _vessel_summary(v: object) -> dict:
+        def _vessel_summary(v: VesselData) -> dict[str, Any]:
             return {
                 ATTR_MMSI: v.mmsi,
                 ATTR_VESSEL_NAME: v.name,

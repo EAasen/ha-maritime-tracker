@@ -24,10 +24,10 @@ class TestMinHaVersion:
         assert len(parts) >= 2, "Expected at least YYYY.M"
         assert all(p.isdigit() for p in parts), "All parts should be numeric"
 
-    def test_min_ha_version_is_2023_or_later(self) -> None:
-        """Minimum supported HA version should be 2023.1.0 or later."""
+    def test_min_ha_version_is_2025_or_later(self) -> None:
+        """Minimum supported HA version should be 2025.1.0 or later."""
         year = int(MIN_HA_VERSION.split(".")[0])
-        assert year >= 2023, f"Expected year >= 2023, got {year}"
+        assert year >= 2025, f"Expected year >= 2025, got {year}"
 
 
 class TestCheckHaVersion:
@@ -38,7 +38,7 @@ class TestCheckHaVersion:
         with (
             patch(
                 "custom_components.marinetraffic_tracker.HA_VERSION",
-                "2024.6.0",
+                "2026.1.0",
             ),
             caplog.at_level(logging.WARNING, logger="custom_components.marinetraffic_tracker"),
         ):

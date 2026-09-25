@@ -80,12 +80,13 @@ Official Kystverket AIS maritime tracker for Home Assistant. Real-time vessel tr
 
 | Home Assistant Version | Supported |
 |------------------------|-----------|
-| 2025.x                 | ✅ Tested |
-| 2024.x                 | ✅ Tested |
-| 2023.x (≥ 2023.1)     | ✅ Tested |
-| < 2023.1               | ❌ Not supported |
+| 2026.x                 | ✅ Tested |
+| 2025.x (≥ 2025.1)      | ✅ Tested |
+| < 2025.1               | ❌ Not supported |
 
-**Minimum supported version:** Home Assistant **2023.1.0**
+**Minimum supported version:** Home Assistant **2025.1.0**
+
+Releases older than 2025.1 can no longer be installed or run on Python 3.12, so they cannot be tested and are not claimed as supported.
 
 The integration logs the running HA version at startup and emits a warning if the version is below the minimum requirement. A GitHub Actions matrix job tests the integration against multiple HA versions on every push and weekly schedule.
 

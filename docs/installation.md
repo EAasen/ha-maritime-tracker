@@ -4,7 +4,7 @@ This guide covers installing the Norwegian Maritime Tracker integration into Hom
 
 ## Prerequisites
 
-- Home Assistant 2023.1.0 or later
+- Home Assistant 2025.1.0 or later
 - Internet access from your Home Assistant instance
 - Free [BarentsWatch](https://www.barentswatch.no/en/) account with API credentials (see [Configuration Guide](configuration.md))
 

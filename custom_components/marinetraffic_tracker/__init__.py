@@ -41,7 +41,7 @@ PLATFORMS: list[Platform] = [
 DATA_AREA_ZONES: Final = f"{DOMAIN}_area_zones"
 
 # Minimum Home Assistant version required by this integration.
-MIN_HA_VERSION: Final = "2023.1.0"
+MIN_HA_VERSION: Final = "2025.1.0"
 
 
 def _check_ha_version() -> None:
@@ -151,7 +151,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry and clean up resources."""
-    unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    unloaded = bool(await hass.config_entries.async_unload_platforms(entry, PLATFORMS))
     if unloaded:
         _async_remove_area_zone(hass, entry)
         hass.data[DOMAIN].pop(entry.entry_id)

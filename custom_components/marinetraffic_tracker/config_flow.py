@@ -6,9 +6,8 @@ import logging
 from typing import Any
 
 import aiohttp
-from homeassistant.config_entries import ConfigEntry, ConfigFlow, OptionsFlow
+from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import voluptuous as vol
@@ -96,12 +95,12 @@ def _default_coordinates(hass: HomeAssistant, defaults: dict[str, Any]) -> tuple
     """Return sensible Norwegian coordinates for the selector default."""
     lat = defaults.get(CONF_LATITUDE)
     lon = defaults.get(CONF_LONGITUDE)
-    if _is_within_norway(lat, lon):
+    if lat is not None and lon is not None and _is_within_norway(lat, lon):
         return float(lat), float(lon)
 
     hass_lat = getattr(hass.config, "latitude", None)
     hass_lon = getattr(hass.config, "longitude", None)
-    if _is_within_norway(hass_lat, hass_lon):
+    if hass_lat is not None and hass_lon is not None and _is_within_norway(hass_lat, hass_lon):
         return float(hass_lat), float(hass_lon)
 
     return _NORWAY_LATITUDE, _NORWAY_LONGITUDE
@@ -242,14 +241,16 @@ class MarineTrafficConfigFlow(ConfigFlow, domain=DOMAIN):
     def __init__(self) -> None:
         self._data: dict[str, Any] = {CONF_DATA_SOURCE: DATA_SOURCE_KYSTVERKET}
 
-    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Show setup instructions before collecting credentials."""
         if user_input is not None:
             return await self.async_step_credentials()
 
         return self.async_show_form(step_id="user", data_schema=_STEP_INTRO_SCHEMA)
 
-    async def async_step_credentials(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+    async def async_step_credentials(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         """Collect and validate BarentsWatch credentials."""
         errors: dict[str, str] = {}
         if user_input is not None:
@@ -277,7 +278,7 @@ class MarineTrafficConfigFlow(ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-    async def async_step_mode(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+    async def async_step_mode(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Choose the tracking mode."""
         if user_input is not None:
             self._data[CONF_TRACKING_MODE] = user_input[CONF_TRACKING_MODE]
@@ -287,7 +288,7 @@ class MarineTrafficConfigFlow(ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(step_id="mode", data_schema=_STEP_MODE_SCHEMA)
 
-    async def async_step_radius(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+    async def async_step_radius(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Collect center coordinates and radius."""
         if user_input is not None:
             loc = user_input[_CONF_LOCATION]
@@ -301,7 +302,7 @@ class MarineTrafficConfigFlow(ConfigFlow, domain=DOMAIN):
             data_schema=_radius_schema(self.hass, self._data),
         )
 
-    async def async_step_box(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+    async def async_step_box(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Collect bounding box coordinates."""
         errors: dict[str, str] = {}
         if user_input is not None:
@@ -323,7 +324,9 @@ class MarineTrafficConfigFlow(ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-    async def async_step_options(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+    async def async_step_options(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         """Collect non-authentication options and create the entry."""
         errors: dict[str, str] = {}
         if user_input is not None:
@@ -384,7 +387,7 @@ class MarineTrafficOptionsFlow(OptionsFlow):
     def __init__(self, config_entry: ConfigEntry) -> None:
         self._config_entry = config_entry
 
-    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Handle the single-step options flow."""
         current = {**self._config_entry.data, **self._config_entry.options}
         current.setdefault(CONF_DATA_SOURCE, DATA_SOURCE_KYSTVERKET)
