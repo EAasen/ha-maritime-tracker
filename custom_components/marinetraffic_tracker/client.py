@@ -15,12 +15,12 @@ SCHEMA NOTE:
 
 from __future__ import annotations
 
-import logging
-import math
-import secrets
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from json import JSONDecodeError, loads
+import logging
+import math
+import secrets
 from typing import Any
 
 import aiohttp

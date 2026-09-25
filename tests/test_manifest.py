@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import json
-import re
 from pathlib import Path
+import re
 
 MANIFEST_PATH = (
     Path(__file__).resolve().parents[1]
@@ -83,27 +83,25 @@ def test_manifest_codeowners_is_list() -> None:
     codeowners = manifest.get("codeowners", None)
     assert isinstance(codeowners, list), "codeowners must be a list"
     for owner in codeowners:
-        assert isinstance(owner, str) and owner.startswith("@"), (
-            f"codeowners entry '{owner}' must be a string starting with '@'"
-        )
+        assert isinstance(owner, str) and owner.startswith(
+            "@"
+        ), f"codeowners entry '{owner}' must be a string starting with '@'"
 
 
 def test_manifest_documentation_url() -> None:
     """documentation must be a non-empty URL string."""
     manifest = load_manifest()
     doc = manifest.get("documentation", "")
-    assert isinstance(doc, str) and doc.startswith("http"), (
-        f"documentation '{doc}' must be a URL"
-    )
+    assert isinstance(doc, str) and doc.startswith("http"), f"documentation '{doc}' must be a URL"
 
 
 def test_manifest_issue_tracker_url() -> None:
     """issue_tracker must be a non-empty URL string."""
     manifest = load_manifest()
     tracker = manifest.get("issue_tracker", "")
-    assert isinstance(tracker, str) and tracker.startswith("http"), (
-        f"issue_tracker '{tracker}' must be a URL"
-    )
+    assert isinstance(tracker, str) and tracker.startswith(
+        "http"
+    ), f"issue_tracker '{tracker}' must be a URL"
 
 
 def test_manifest_config_flow_is_bool() -> None:

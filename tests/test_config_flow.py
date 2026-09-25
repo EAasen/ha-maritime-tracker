@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
 
+from homeassistant.helpers import selector
 import pytest
 import voluptuous as vol
-from homeassistant.helpers import selector
 
 from custom_components.marinetraffic_tracker import config_flow
 from custom_components.marinetraffic_tracker.config_flow import (
@@ -19,7 +19,6 @@ from custom_components.marinetraffic_tracker.config_flow import (
     _credentials_schema,
     _options_schema,
 )
-from custom_components.marinetraffic_tracker.kystverket_client import KystverketAuthError
 from custom_components.marinetraffic_tracker.const import (
     CONF_BARENTSWATCH_CLIENT_ID,
     CONF_BARENTSWATCH_CLIENT_SECRET,
@@ -166,8 +165,7 @@ async def test_credentials_step_requires_barentswatch_credentials() -> None:
     assert result["type"] == "form"
     assert result["errors"][CONF_BARENTSWATCH_CLIENT_ID] == "barentswatch_client_id_required"
     assert (
-        result["errors"][CONF_BARENTSWATCH_CLIENT_SECRET]
-        == "barentswatch_client_secret_required"
+        result["errors"][CONF_BARENTSWATCH_CLIENT_SECRET] == "barentswatch_client_secret_required"
     )
 
 

@@ -176,14 +176,17 @@ class TestRadiusFilter:
     # Various distances
     # ------------------------------------------------------------------
 
-    @pytest.mark.parametrize("radius_km,offset_km,expect_inside", [
-        (10.0, 9.9, True),
-        (10.0, 10.1, False),
-        (100.0, 99.0, True),
-        (100.0, 101.0, False),
-        (500.0, 499.0, True),
-        (500.0, 501.0, False),
-    ])
+    @pytest.mark.parametrize(
+        "radius_km,offset_km,expect_inside",
+        [
+            (10.0, 9.9, True),
+            (10.0, 10.1, False),
+            (100.0, 99.0, True),
+            (100.0, 101.0, False),
+            (500.0, 499.0, True),
+            (500.0, 501.0, False),
+        ],
+    )
     def test_various_radii(
         self,
         radius_km: float,
@@ -311,14 +314,17 @@ class TestBoundingBoxFilter:
     # Coordinate range coverage
     # ------------------------------------------------------------------
 
-    @pytest.mark.parametrize("lat,lon,expect_inside", [
-        (0.0, 0.0, True),       # equator / prime meridian
-        (-89.9, 0.0, True),     # near south pole
-        (89.9, 0.0, True),      # near north pole
-        (-90.0, -180.0, True),  # extreme SW corner — on boundary
-        (90.0, 180.0, True),    # extreme NE corner — on boundary
-        (0.0, 181.0, False),    # longitude beyond east boundary — outside
-    ])
+    @pytest.mark.parametrize(
+        "lat,lon,expect_inside",
+        [
+            (0.0, 0.0, True),  # equator / prime meridian
+            (-89.9, 0.0, True),  # near south pole
+            (89.9, 0.0, True),  # near north pole
+            (-90.0, -180.0, True),  # extreme SW corner — on boundary
+            (90.0, 180.0, True),  # extreme NE corner — on boundary
+            (0.0, 181.0, False),  # longitude beyond east boundary — outside
+        ],
+    )
     def test_global_coordinate_ranges(
         self,
         lat: float,
@@ -326,9 +332,7 @@ class TestBoundingBoxFilter:
         expect_inside: bool,
     ) -> None:
         """BoundingBoxFilter must handle the full lat/lon coordinate space."""
-        global_flt = BoundingBoxFilter(
-            north=90.0, east=180.0, south=-90.0, west=-180.0
-        )
+        global_flt = BoundingBoxFilter(north=90.0, east=180.0, south=-90.0, west=-180.0)
         v = _vessel_at(lat, lon)
         assert global_flt.contains(v) is expect_inside
 

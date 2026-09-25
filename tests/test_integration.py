@@ -11,8 +11,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from homeassistant.core import HomeAssistant
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.marinetraffic_tracker.client import VesselData
@@ -46,6 +46,7 @@ from custom_components.marinetraffic_tracker.const import (
 @pytest.fixture(autouse=True)
 def _auto_enable_custom(enable_custom_integrations: None) -> None:  # noqa: PT004
     """Ensure the marinetraffic_tracker custom component is loadable in all tests."""
+
 
 # ---------------------------------------------------------------------------
 # Shared sample vessels
@@ -241,9 +242,7 @@ async def test_vessel_appears_creates_entities(hass: HomeAssistant) -> None:
 
     registry = er.async_get(hass)
     vessel_entries = [
-        e
-        for e in registry.entities.values()
-        if _VESSEL_A.mmsi in (e.unique_id or "")
+        e for e in registry.entities.values() if _VESSEL_A.mmsi in (e.unique_id or "")
     ]
     assert vessel_entries, "Expected at least one entity for vessel MMSI"
 
@@ -406,8 +405,7 @@ async def test_device_tracker_gps_coordinates(hass: HomeAssistant) -> None:
         (
             e
             for e in registry.entities.values()
-            if e.domain == "device_tracker"
-            and _VESSEL_A.mmsi in (e.unique_id or "")
+            if e.domain == "device_tracker" and _VESSEL_A.mmsi in (e.unique_id or "")
         ),
         None,
     )

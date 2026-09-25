@@ -15,8 +15,8 @@ from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
 from homeassistant.helpers.update_coordinator import UpdateFailed
+import pytest
 
 from custom_components.marinetraffic_tracker.aishub_client import AISHubClient
 from custom_components.marinetraffic_tracker.client import VesselData

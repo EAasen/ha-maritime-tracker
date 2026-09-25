@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, datetime, timedelta
 import json
+from json import JSONDecodeError
 import logging
 import math
-from datetime import UTC, datetime, timedelta
-from json import JSONDecodeError
 from typing import Any
 
 import aiohttp
@@ -158,9 +158,7 @@ class KystverketClient:
                 payload = await resp.json(content_type=None)
         except TimeoutError as exc:
             _LOGGER.error("Timeout obtaining BarentsWatch token")
-            raise TimeoutError(
-                "Timed out requesting BarentsWatch access token"
-            ) from exc
+            raise TimeoutError("Timed out requesting BarentsWatch access token") from exc
         except aiohttp.ClientConnectionError as exc:
             _LOGGER.error("Connection error obtaining BarentsWatch token: %s", exc)
             raise
@@ -196,9 +194,7 @@ class KystverketClient:
         max_attempts = _MAX_RETRIES if retry else 1
         for attempt in range(max_attempts):
             try:
-                _LOGGER.debug(
-                    "GET %s (attempt %d/%d)", _VESSELS_URL, attempt + 1, max_attempts
-                )
+                _LOGGER.debug("GET %s (attempt %d/%d)", _VESSELS_URL, attempt + 1, max_attempts)
                 async with self._session.get(
                     _VESSELS_URL,
                     headers=headers,
@@ -228,11 +224,7 @@ class KystverketClient:
                         if not retry:
                             resp.raise_for_status()
                         retry_after = int(resp.headers.get("Retry-After", 0))
-                        delay = (
-                            retry_after
-                            if retry_after > 0
-                            else _RETRY_BASE_DELAY * (2 ** attempt)
-                        )
+                        delay = retry_after if retry_after > 0 else _RETRY_BASE_DELAY * (2**attempt)
                         _LOGGER.warning(
                             "BarentsWatch rate-limited (HTTP 429); retrying in %.0f s "
                             "(attempt %d/%d)",
@@ -245,7 +237,7 @@ class KystverketClient:
                     if resp.status >= 500:
                         if not retry:
                             resp.raise_for_status()
-                        delay = _RETRY_BASE_DELAY * (2 ** attempt)
+                        delay = _RETRY_BASE_DELAY * (2**attempt)
                         _LOGGER.warning(
                             "BarentsWatch server error (HTTP %d); retrying in %.0f s "
                             "(attempt %d/%d)",
@@ -273,7 +265,7 @@ class KystverketClient:
                 )
                 last_exc.__cause__ = exc
                 if attempt + 1 < max_attempts:
-                    await asyncio.sleep(_RETRY_BASE_DELAY * (2 ** attempt))
+                    await asyncio.sleep(_RETRY_BASE_DELAY * (2**attempt))
             except aiohttp.ClientConnectionError as exc:
                 _LOGGER.warning(
                     "Connection error fetching BarentsWatch vessel data (attempt %d/%d): %s",
@@ -283,9 +275,7 @@ class KystverketClient:
                 )
                 last_exc = exc
                 if attempt + 1 < max_attempts:
-                    await asyncio.sleep(_RETRY_BASE_DELAY * (2 ** attempt))
-            except (RuntimeError, aiohttp.ClientResponseError):
-                raise
+                    await asyncio.sleep(_RETRY_BASE_DELAY * (2**attempt))
 
         if last_exc is not None:
             raise last_exc

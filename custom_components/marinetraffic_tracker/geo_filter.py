@@ -21,10 +21,23 @@ callers can log the excluded vessels without a second pass.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import logging
 import math
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
+
+from .const import (
+    CONF_EAST,
+    CONF_LATITUDE,
+    CONF_LONGITUDE,
+    CONF_NORTH,
+    CONF_RADIUS_KM,
+    CONF_SOUTH,
+    CONF_TRACKING_MODE,
+    CONF_WEST,
+    DEFAULT_RADIUS_KM,
+    TRACKING_MODE_RADIUS,
+)
 
 if TYPE_CHECKING:
     from .client import VesselData
@@ -85,15 +98,11 @@ class RadiusFilter:
     def contains(self, vessel: VesselData) -> bool:
         """Return ``True`` when *vessel* is within the configured radius."""
         return (
-            _haversine_km(
-                self.latitude, self.longitude, vessel.latitude, vessel.longitude
-            )
+            _haversine_km(self.latitude, self.longitude, vessel.latitude, vessel.longitude)
             <= self.radius_km
         )
 
-    def partition(
-        self, vessels: list[VesselData]
-    ) -> tuple[list[VesselData], list[VesselData]]:
+    def partition(self, vessels: list[VesselData]) -> tuple[list[VesselData], list[VesselData]]:
         """Split *vessels* into *(inside, outside)* lists.
 
         Vessels inside the radius are in the first list; those outside are in
@@ -114,9 +123,7 @@ class RadiusFilter:
         inside: list[VesselData] = []
         outside: list[VesselData] = []
         for vessel in vessels:
-            dist = _haversine_km(
-                self.latitude, self.longitude, vessel.latitude, vessel.longitude
-            )
+            dist = _haversine_km(self.latitude, self.longitude, vessel.latitude, vessel.longitude)
             if dist <= self.radius_km:
                 inside.append(vessel)
             else:
@@ -156,13 +163,9 @@ class BoundingBoxFilter:
 
     def __post_init__(self) -> None:
         if self.south >= self.north:
-            raise ValueError(
-                f"south ({self.south}) must be less than north ({self.north})"
-            )
+            raise ValueError(f"south ({self.south}) must be less than north ({self.north})")
         if self.west >= self.east:
-            raise ValueError(
-                f"west ({self.west}) must be less than east ({self.east})"
-            )
+            raise ValueError(f"west ({self.west}) must be less than east ({self.east})")
 
     def contains(self, vessel: VesselData) -> bool:
         """Return ``True`` when *vessel* lies within the bounding box."""
@@ -171,9 +174,7 @@ class BoundingBoxFilter:
             and self.west <= vessel.longitude <= self.east
         )
 
-    def partition(
-        self, vessels: list[VesselData]
-    ) -> tuple[list[VesselData], list[VesselData]]:
+    def partition(self, vessels: list[VesselData]) -> tuple[list[VesselData], list[VesselData]]:
         """Split *vessels* into *(inside, outside)* lists.
 
         Filtered-out vessels are logged at DEBUG level.
@@ -243,19 +244,6 @@ def build_geo_filter(config: dict) -> RadiusFilter | BoundingBoxFilter | None:
     Returns:
         A :class:`RadiusFilter`, :class:`BoundingBoxFilter`, or ``None``.
     """
-    from .const import (  # noqa: PLC0415 — local import to avoid circular deps at module level
-        CONF_EAST,
-        CONF_LATITUDE,
-        CONF_LONGITUDE,
-        CONF_NORTH,
-        CONF_RADIUS_KM,
-        CONF_SOUTH,
-        CONF_TRACKING_MODE,
-        CONF_WEST,
-        DEFAULT_RADIUS_KM,
-        TRACKING_MODE_RADIUS,
-    )
-
     mode = config.get(CONF_TRACKING_MODE, TRACKING_MODE_RADIUS)
 
     try:

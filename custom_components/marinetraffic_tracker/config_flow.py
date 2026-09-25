@@ -6,12 +6,12 @@ import logging
 from typing import Any
 
 import aiohttp
-import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, OptionsFlow
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+import voluptuous as vol
 
 from .const import (
     CONF_BARENTSWATCH_CLIENT_ID,
@@ -249,9 +249,7 @@ class MarineTrafficConfigFlow(ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(step_id="user", data_schema=_STEP_INTRO_SCHEMA)
 
-    async def async_step_credentials(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_credentials(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Collect and validate BarentsWatch credentials."""
         errors: dict[str, str] = {}
         if user_input is not None:

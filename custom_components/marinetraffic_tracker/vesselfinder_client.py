@@ -47,10 +47,10 @@ SCHEMA NOTE:
 
 from __future__ import annotations
 
+from json import JSONDecodeError, loads
 import logging
 import math
 import secrets
-from json import JSONDecodeError, loads
 from typing import Any
 
 import aiohttp

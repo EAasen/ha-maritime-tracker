@@ -224,7 +224,6 @@ def test_parse_ndjson_ignores_invalid_lines() -> None:
     assert rows == [{"mmsi": 1, "latitude": 60, "longitude": 5}]
 
 
-
 # ---------------------------------------------------------------------------
 # HTTP error handling tests
 # ---------------------------------------------------------------------------
@@ -382,6 +381,8 @@ async def test_fetch_payload_raises_on_timeout() -> None:
     with patch("asyncio.sleep", new_callable=AsyncMock):
         with pytest.raises(TimeoutError, match="Timed out"):
             await client._fetch_payload("token", 60, 6, 59, 5)
+
+
 @pytest.mark.asyncio
 async def test_async_validate_credentials_requests_access_token() -> None:
     """Credential validation should reuse the token acquisition path."""

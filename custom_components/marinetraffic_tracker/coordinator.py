@@ -18,12 +18,12 @@ The coordinator owns the vessel state dictionary and is responsible for:
 from __future__ import annotations
 
 import asyncio
+from dataclasses import dataclass, field, replace
+from datetime import UTC, datetime, timedelta
 import logging
 import math
 import random
-from dataclasses import dataclass, field, replace
-from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, NoReturn
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -89,6 +89,7 @@ BACKOFF_MAX_SECONDS = 300
 # Internal geometry helper
 # ---------------------------------------------------------------------------
 
+
 def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Return the great-circle distance in kilometres between two lat/lon points.
 
@@ -116,6 +117,7 @@ def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 # ---------------------------------------------------------------------------
 # Statistics data model
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class VesselRecord:
@@ -280,9 +282,7 @@ class MarineTrafficCoordinator(DataUpdateCoordinator[dict[str, VesselData]]):
         has_official_api = data_source in {
             DATA_SOURCE_AISHUB,
             DATA_SOURCE_KYSTVERKET,
-        } or any(
-            isinstance(c, AISHubClient | KystverketClient) for c in all_clients
-        )
+        } or any(isinstance(c, AISHubClient | KystverketClient) for c in all_clients)
         min_interval = MIN_UPDATE_INTERVAL_API if has_official_api else MIN_UPDATE_INTERVAL
 
         try:
@@ -428,6 +428,55 @@ class MarineTrafficCoordinator(DataUpdateCoordinator[dict[str, VesselData]]):
             _LOGGER.error("Data source fetch failed: %s", detail)
             return None, detail
 
+    @staticmethod
+    def _log_source_results(
+        results: list[list[VesselData] | None], errors: list[str | None]
+    ) -> None:
+        """Log the outcome of each polled data source."""
+        for idx, (result, error) in enumerate(zip(results, errors, strict=True)):
+            label = "primary" if idx == 0 else f"extra[{idx - 1}]"
+            if result is None:
+                _LOGGER.warning(
+                    "Data source %s failed to return vessel data%s",
+                    label,
+                    f": {error}" if error else "",
+                )
+            else:
+                _LOGGER.debug("Data source %s returned %d vessel(s)", label, len(result))
+
+    def _raise_all_sources_failed(self, errors: list[str | None], source_count: int) -> NoReturn:
+        """Record a completely failed poll cycle and raise ``UpdateFailed``."""
+        self._consecutive_failures += 1
+        _LOGGER.error(
+            "Vessel data fetch failed (consecutive failures: %d)",
+            self._consecutive_failures,
+        )
+        # Fire the connectivity-issue event exactly once when crossing the
+        # threshold — not on every subsequent failure — to avoid event-bus noise
+        # during sustained outages.  The counter resets on the next success.
+        if self._consecutive_failures == PERSISTENT_FAILURE_THRESHOLD:
+            self.hass.bus.async_fire(
+                "marinetraffic_connectivity_issue",
+                {
+                    "consecutive_failures": self._consecutive_failures,
+                    "last_successful_update": (
+                        self._last_successful_update.isoformat()
+                        if self._last_successful_update
+                        else None
+                    ),
+                },
+            )
+
+        message = (
+            "Kystverket / BarentsWatch request failed to return vessel data"
+            if source_count == 1
+            else "All configured data sources failed to return vessel data"
+        )
+        error_details = next((error for error in errors if error), None)
+        if error_details:
+            message = f"{message}: {error_details}"
+        raise UpdateFailed(message)
+
     async def _async_update_data(self) -> dict[str, VesselData]:
         """Fetch fresh vessel data, merge into registry, purge stale entries.
 
@@ -503,50 +552,11 @@ class MarineTrafficCoordinator(DataUpdateCoordinator[dict[str, VesselData]]):
         errors = [error for _, error in raw_results]
 
         # Log which sources succeeded / failed.
-        for idx, result in enumerate(results):
-            label = "primary" if idx == 0 else f"extra[{idx - 1}]"
-            if result is None:
-                _LOGGER.warning(
-                    "Data source %s failed to return vessel data%s",
-                    label,
-                    f": {errors[idx]}" if errors[idx] else "",
-                )
-            else:
-                _LOGGER.debug("Data source %s returned %d vessel(s)", label, len(result))
+        self._log_source_results(results, errors)
 
         # Fail only when every source returned None.
         if all(r is None for r in results):
-            error_details = next((error for error in errors if error), None)
-            self._consecutive_failures += 1
-            _LOGGER.error(
-                "Vessel data fetch failed (consecutive failures: %d)",
-                self._consecutive_failures,
-            )
-            # Fire the connectivity-issue event exactly once when crossing the
-            # threshold — not on every subsequent failure — to avoid event-bus noise
-            # during sustained outages.  The counter resets on the next success.
-            if self._consecutive_failures == PERSISTENT_FAILURE_THRESHOLD:
-                self.hass.bus.async_fire(
-                    "marinetraffic_connectivity_issue",
-                    {
-                        "consecutive_failures": self._consecutive_failures,
-                        "last_successful_update": (
-                            self._last_successful_update.isoformat()
-                            if self._last_successful_update
-                            else None
-                        ),
-                    },
-                )
-            if len(all_clients) == 1:
-                message = "Kystverket / BarentsWatch request failed to return vessel data"
-                if error_details:
-                    message = f"{message}: {error_details}"
-                raise UpdateFailed(message)
-
-            message = "All configured data sources failed to return vessel data"
-            if error_details:
-                message = f"{message}: {error_details}"
-            raise UpdateFailed(message)
+            self._raise_all_sources_failed(errors, len(all_clients))
 
         # Merge results: MMSI deduplication — most-recent last_seen wins.
         # For vessels without an explicit timestamp (scrapers do not set one),
@@ -580,9 +590,7 @@ class MarineTrafficCoordinator(DataUpdateCoordinator[dict[str, VesselData]]):
                 allowed_types,
             )
 
-        exclude_anchored: bool = bool(
-            config.get(CONF_EXCLUDE_ANCHORED, DEFAULT_EXCLUDE_ANCHORED)
-        )
+        exclude_anchored: bool = bool(config.get(CONF_EXCLUDE_ANCHORED, DEFAULT_EXCLUDE_ANCHORED))
         exclude_moored: bool = bool(config.get(CONF_EXCLUDE_MOORED, DEFAULT_EXCLUDE_MOORED))
 
         now = datetime.now(UTC)
@@ -621,8 +629,10 @@ class MarineTrafficCoordinator(DataUpdateCoordinator[dict[str, VesselData]]):
             if is_anchored and history:
                 last = history[-1]
                 dist_km = _haversine_km(
-                    last["latitude"], last["longitude"],
-                    vessel.latitude, vessel.longitude,
+                    last["latitude"],
+                    last["longitude"],
+                    vessel.latitude,
+                    vessel.longitude,
                 )
                 if dist_km < ANCHOR_SWING_THRESHOLD_KM:
                     _LOGGER.debug(
