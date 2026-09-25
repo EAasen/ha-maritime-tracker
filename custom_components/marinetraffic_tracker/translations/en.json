@@ -51,14 +51,16 @@
           "stale_timeout": "Stale Vessel Timeout (seconds)",
           "filter_vessel_types": "Allowed Vessel Types",
           "exclude_anchored": "Exclude Anchored Vessels from Live Map",
-          "exclude_moored": "Exclude Moored Vessels from Live Map"
+          "exclude_moored": "Exclude Moored Vessels from Live Map",
+          "create_area_zone": "Show Tracked Area on Map"
         },
         "data_description": {
           "update_interval": "How often to poll Kystverket live AIS data. Minimum 5 seconds.",
           "stale_timeout": "A vessel not seen for this long will be removed.",
           "filter_vessel_types": "Only show vessels of the selected types. Leave empty to show all vessel types.",
           "exclude_anchored": "When enabled, vessels with 'At Anchor' status are removed from the live map and device tracker entities but still appear in the summary attributes.",
-          "exclude_moored": "When enabled, vessels with 'Moored' status are removed from the live map and device tracker entities but still appear in the summary attributes."
+          "exclude_moored": "When enabled, vessels with 'Moored' status are removed from the live map and device tracker entities but still appear in the summary attributes.",
+          "create_area_zone": "Draws the tracked area as a zone on the Home Assistant map. Because the zone is not passive, people located inside it and outside every smaller zone will report this zone as their location."
         }
       }
     },
@@ -85,7 +87,8 @@
           "stale_timeout": "Stale Vessel Timeout (seconds)",
           "filter_vessel_types": "Allowed Vessel Types",
           "exclude_anchored": "Exclude Anchored Vessels from Live Map",
-          "exclude_moored": "Exclude Moored Vessels from Live Map"
+          "exclude_moored": "Exclude Moored Vessels from Live Map",
+          "create_area_zone": "Show Tracked Area on Map"
         }
       }
     },

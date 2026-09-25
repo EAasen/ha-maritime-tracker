@@ -204,6 +204,30 @@ class BoundingBoxFilter:
         return inside, outside
 
 
+def area_centre_and_radius(config: dict) -> tuple[float, float, float] | None:
+    """Return ``(latitude, longitude, radius_km)`` describing the tracked area.
+
+    Box-mode areas are approximated by the smallest circle that fully contains
+    the rectangle, since Home Assistant zones are circular. Returns ``None``
+    when the configuration is incomplete or invalid.
+
+    Args:
+        config: Merged ``entry.data | entry.options`` dictionary.
+    """
+    geo_filter = build_geo_filter(config)
+    if isinstance(geo_filter, RadiusFilter):
+        return geo_filter.latitude, geo_filter.longitude, geo_filter.radius_km
+    if isinstance(geo_filter, BoundingBoxFilter):
+        centre_lat = (geo_filter.north + geo_filter.south) / 2
+        centre_lon = (geo_filter.east + geo_filter.west) / 2
+        return (
+            centre_lat,
+            centre_lon,
+            _haversine_km(centre_lat, centre_lon, geo_filter.north, geo_filter.east),
+        )
+    return None
+
+
 def build_geo_filter(config: dict) -> RadiusFilter | BoundingBoxFilter | None:
     """Construct the appropriate geographic filter from a config dict.
 

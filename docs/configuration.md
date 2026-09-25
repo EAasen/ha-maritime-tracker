@@ -74,6 +74,7 @@ Enter the **Client ID** and **Client Secret** you obtained in step 1.
 | **Stale timeout (s)** | 3600 | Vessels not seen for longer than this duration are removed from the live map. |
 | **Vessel type filter** | *(all)* | Optionally limit tracking to specific AIS vessel categories (Cargo, Tanker, Passenger, Fishing, etc.).  Leave empty to track all types. |
 | **Exclude anchored / moored vessels** | Off | When enabled, vessels with AIS status *At Anchor* or *Moored* are hidden from the live map and device trackers. |
+| **Show tracked area on map** | On | Draws the tracked area as a zone on the Home Assistant map.  The zone is not passive, so a person inside it and outside every smaller zone will report it as their location. |
 
 ---
 

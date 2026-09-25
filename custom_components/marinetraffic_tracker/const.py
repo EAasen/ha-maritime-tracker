@@ -99,6 +99,17 @@ CONF_STALE_TIMEOUT = "stale_timeout"
 CONF_FILTER_VESSEL_TYPES = "filter_vessel_types"
 CONF_EXCLUDE_ANCHORED = "exclude_anchored"
 CONF_EXCLUDE_MOORED = "exclude_moored"
+CONF_CREATE_AREA_ZONE = "create_area_zone"
+
+# ---------------------------------------------------------------------------
+# Map integration
+# ---------------------------------------------------------------------------
+# Value reported by geo_location entities; users put this in the Map card's
+# ``geo_location_sources`` list to show tracked vessels.
+GEO_LOCATION_SOURCE = DOMAIN
+
+# Entity ID prefix of the synthetic zone drawn around the tracked area.
+AREA_ZONE_ENTITY_PREFIX = "zone.maritime_tracking_area"
 
 # ---------------------------------------------------------------------------
 # Defaults
@@ -112,6 +123,7 @@ DEFAULT_FILTER_VESSEL_TYPES: list[str] = []  # empty = no filter (show all types
 DEFAULT_HISTORY_SIZE = 20  # maximum position history points stored per vessel
 DEFAULT_EXCLUDE_ANCHORED = False  # by default, anchored vessels are included in live map
 DEFAULT_EXCLUDE_MOORED = False  # by default, moored vessels are included in live map
+DEFAULT_CREATE_AREA_ZONE = True  # draw the tracked area on the HA map
 
 # ---------------------------------------------------------------------------
 # Safety limits — anti-ban rate limiting compliance

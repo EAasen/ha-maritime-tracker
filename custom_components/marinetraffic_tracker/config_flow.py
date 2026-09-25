@@ -16,6 +16,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .const import (
     CONF_BARENTSWATCH_CLIENT_ID,
     CONF_BARENTSWATCH_CLIENT_SECRET,
+    CONF_CREATE_AREA_ZONE,
     CONF_DATA_SOURCE,
     CONF_EAST,
     CONF_EXCLUDE_ANCHORED,
@@ -31,6 +32,7 @@ from .const import (
     CONF_UPDATE_INTERVAL,
     CONF_WEST,
     DATA_SOURCE_KYSTVERKET,
+    DEFAULT_CREATE_AREA_ZONE,
     DEFAULT_EXCLUDE_ANCHORED,
     DEFAULT_EXCLUDE_MOORED,
     DEFAULT_RADIUS_KM,
@@ -203,6 +205,10 @@ def _options_schema(defaults: dict[str, Any]) -> vol.Schema:
             vol.Required(
                 CONF_EXCLUDE_MOORED,
                 default=defaults.get(CONF_EXCLUDE_MOORED, DEFAULT_EXCLUDE_MOORED),
+            ): bool,
+            vol.Required(
+                CONF_CREATE_AREA_ZONE,
+                default=defaults.get(CONF_CREATE_AREA_ZONE, DEFAULT_CREATE_AREA_ZONE),
             ): bool,
         }
     )

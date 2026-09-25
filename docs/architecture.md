@@ -71,7 +71,11 @@ Makes authenticated OAuth2 requests to the BarentsWatch live AIS endpoint.  Hand
 
 ### `device_tracker.py` — Device Tracker Platform
 
-- **`MarineTrafficVesselTracker`** — one tracker per vessel, exposing `latitude` and `longitude` for map integration.  Dynamically created alongside the vessel sensor.
+- **`MarineTrafficVesselTracker`** — one tracker per vessel, exposing `latitude` and `longitude` for map integration.  Dynamically created alongside the vessel sensor, and disabled by default in the entity registry.
+
+### `geo_location.py` — Geolocation Platform
+
+- **`MarineTrafficVesselLocation`** — a transient map marker per vessel in the tracked area.  Carries no `unique_id`, so it is never persisted in the entity registry or recorder; entities are added and removed as vessels enter and leave.  Shown via a Map card's `geo_location_sources`.
 
 ### `config_flow.py` — UI Configuration
 

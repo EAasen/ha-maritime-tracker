@@ -54,6 +54,12 @@ One device-tracker entity is created for each vessel.  Device trackers expose `l
 
 The device tracker includes the same AIS attributes as the per-vessel sensor.
 
+> **Disabled by default.**  In a busy area this would otherwise create hundreds of registry entities and flood the recorder.  Enable individual vessels via **Settings → Devices & Services → Entities** when you want long-term history for them.  For a live map you do not need to enable anything — see [Map Card](#map-card).
+
+### Vessel Map Markers (`geo_location`)
+
+Every vessel inside the tracked area is also published as a transient `geo_location` entity.  These are created and removed automatically as vessels come and go, are never written to the entity registry or the recorder, and require no manual enabling.  They exist purely to put vessels on the map.
+
 ### Statistics Sensor
 
 **Entity ID format:** `sensor.<entry_name>_statistics`
@@ -75,17 +81,33 @@ The device tracker includes the same AIS attributes as the per-vessel sensor.
 
 ## Map Card
 
-The device-tracker entities appear automatically on Home Assistant's built-in **Map** card.  To add a map card showing all tracked vessels:
+Every vessel in the tracked area is published as a `geo_location` entity, so a single card shows them all — no entity needs to be enabled first:
+
+```yaml
+type: map
+geo_location_sources:
+  - marinetraffic_tracker
+```
+
+Markers appear and disappear on their own as vessels enter and leave the area.
+
+### Tracked area zone
+
+The integration also draws the tracked area on the map as a zone named after the config entry.  Box-mode areas are approximated by the smallest circle that contains the rectangle, because Home Assistant zones are always circular.
+
+The zone is *not* passive, since the Map card only draws active zones.  A side effect is that a person inside the area and outside every smaller zone will report this zone as their location.  If that is unwanted, turn off **Show Tracked Area on Map** in the integration options.
+
+### Pinning specific vessels
+
+To keep a chosen vessel on the map with full history, enable its device-tracker entity and list it explicitly:
 
 ```yaml
 type: map
 entities:
   - device_tracker.my_area_vessel_123456789
-  - device_tracker.my_area_vessel_987654321
-# Or use a group / label to include all vessel trackers
+geo_location_sources:
+  - marinetraffic_tracker
 ```
-
-For a dynamic map that updates as new vessels are detected, use a label or a [custom card](https://github.com/custom-cards/lovelace-home-assistant-ais-tracker) that queries entities by domain.
 
 ---
 
