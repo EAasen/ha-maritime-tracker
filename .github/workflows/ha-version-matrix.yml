@@ -11,7 +11,7 @@ on:
 
 jobs:
   compatibility:
-    name: "HA ${{ matrix.ha-version }}"
+    name: "HA ${{ matrix.ha-version }} (Python ${{ matrix.python-version }})"
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -19,20 +19,23 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ha-version:
-          # Older releases are no longer installable or runnable on Python 3.12
-          # (unbuildable pyyaml, incompatible transitive deps), so they cannot
-          # be tested and are not claimed as supported.
-          - "2025.1.0"
-          - "2025.6.0"
-          - "2026.1.0"
+        # Each Home Assistant release has a hard Requires-Python floor, so the
+        # interpreter is pinned per entry. Releases before 2025.1 are excluded:
+        # they no longer build or run on any currently available Python.
+        include:
+          - ha-version: "2025.1.0"
+            python-version: "3.12"
+          - ha-version: "2026.1.0"
+            python-version: "3.13"
+          - ha-version: "2026.9.0"
+            python-version: "3.14"
 
     steps:
       - uses: actions/checkout@v6
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
           cache: pip
 
       - name: Install dependencies pinned to HA ${{ matrix.ha-version }}
