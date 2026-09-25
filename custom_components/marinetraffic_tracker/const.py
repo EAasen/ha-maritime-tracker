@@ -100,6 +100,18 @@ CONF_FILTER_VESSEL_TYPES = "filter_vessel_types"
 CONF_EXCLUDE_ANCHORED = "exclude_anchored"
 CONF_EXCLUDE_MOORED = "exclude_moored"
 CONF_CREATE_AREA_ZONE = "create_area_zone"
+CONF_VESSEL_LOG = "vessel_log"
+CONF_VESSEL_LOG_FORMAT = "vessel_log_format"
+CONF_VESSEL_LOG_RETENTION_DAYS = "vessel_log_retention_days"
+
+# ---------------------------------------------------------------------------
+# Vessel observation log files
+# ---------------------------------------------------------------------------
+# Subdirectory of the Home Assistant config folder that holds the log files.
+VESSEL_LOG_DIR_NAME = "marinetraffic_tracker"
+VESSEL_LOG_FORMAT_CSV = "csv"
+VESSEL_LOG_FORMAT_JSONL = "jsonl"
+VESSEL_LOG_FORMATS = [VESSEL_LOG_FORMAT_CSV, VESSEL_LOG_FORMAT_JSONL]
 
 # ---------------------------------------------------------------------------
 # Map integration
@@ -124,6 +136,9 @@ DEFAULT_HISTORY_SIZE = 20  # maximum position history points stored per vessel
 DEFAULT_EXCLUDE_ANCHORED = False  # by default, anchored vessels are included in live map
 DEFAULT_EXCLUDE_MOORED = False  # by default, moored vessels are included in live map
 DEFAULT_CREATE_AREA_ZONE = True  # draw the tracked area on the HA map
+DEFAULT_VESSEL_LOG = False  # opt-in: a busy area writes tens of thousands of rows a day
+DEFAULT_VESSEL_LOG_FORMAT = VESSEL_LOG_FORMAT_CSV
+DEFAULT_VESSEL_LOG_RETENTION_DAYS = 7
 
 # ---------------------------------------------------------------------------
 # Safety limits — anti-ban rate limiting compliance

@@ -48,6 +48,9 @@ from .const import (
     CONF_STALE_TIMEOUT,
     CONF_TRACKING_MODE,
     CONF_UPDATE_INTERVAL,
+    CONF_VESSEL_LOG,
+    CONF_VESSEL_LOG_FORMAT,
+    CONF_VESSEL_LOG_RETENTION_DAYS,
     CONF_WEST,
     DATA_SOURCE_AISHUB,
     DATA_SOURCE_KYSTVERKET,
@@ -59,12 +62,16 @@ from .const import (
     DEFAULT_RADIUS_KM,
     DEFAULT_STALE_TIMEOUT,
     DEFAULT_UPDATE_INTERVAL,
+    DEFAULT_VESSEL_LOG,
+    DEFAULT_VESSEL_LOG_FORMAT,
+    DEFAULT_VESSEL_LOG_RETENTION_DAYS,
     DOMAIN,
     MIN_UPDATE_INTERVAL,
     MIN_UPDATE_INTERVAL_API,
     TRACKING_MODE_RADIUS,
 )
 from .kystverket_client import KystverketAuthError, KystverketClient
+from .vessel_log import VesselLogWriter, build_writer
 from .vesselfinder_client import VesselFinderClient
 
 _LOGGER = logging.getLogger(__name__)
@@ -270,6 +277,8 @@ class MarineTrafficCoordinator(DataUpdateCoordinator[dict[str, VesselData]]):
         # Failure tracking for exponential backoff and persistent-failure alerts.
         self._consecutive_failures: int = 0
         self._last_successful_update: datetime | None = None
+        # Built on first use so the option can be toggled without a reload.
+        self._log_writer: VesselLogWriter | None = None
 
         # Source-aware safety compliance: if any configured source is AISHub
         # (an official API), use the faster API floor; otherwise use the
@@ -476,6 +485,25 @@ class MarineTrafficCoordinator(DataUpdateCoordinator[dict[str, VesselData]]):
         if error_details:
             message = f"{message}: {error_details}"
         raise UpdateFailed(message)
+
+    async def _async_write_vessel_log(self, vessels: list[VesselData], now: datetime) -> None:
+        """Append this cycle's observations to the vessel log file, if enabled."""
+        config: dict = {**self._entry.data, **self._entry.options}
+        if not config.get(CONF_VESSEL_LOG, DEFAULT_VESSEL_LOG):
+            return
+
+        if self._log_writer is None:
+            self._log_writer = build_writer(
+                self.hass.config.config_dir,
+                self._entry.entry_id,
+                str(config.get(CONF_VESSEL_LOG_FORMAT, DEFAULT_VESSEL_LOG_FORMAT)),
+                int(config.get(CONF_VESSEL_LOG_RETENTION_DAYS, DEFAULT_VESSEL_LOG_RETENTION_DAYS)),
+            )
+
+        try:
+            await self.hass.async_add_executor_job(self._log_writer.write, vessels, now)
+        except OSError as exc:
+            _LOGGER.warning("Could not write vessel log: %s", exc)
 
     async def _async_update_data(self) -> dict[str, VesselData]:
         """Fetch fresh vessel data, merge into registry, purge stale entries.
@@ -716,6 +744,7 @@ class MarineTrafficCoordinator(DataUpdateCoordinator[dict[str, VesselData]]):
             )
         self._consecutive_failures = 0
         self._last_successful_update = now
+        await self._async_write_vessel_log(fresh, now)
         return dict(self._vessels)
 
     # ------------------------------------------------------------------

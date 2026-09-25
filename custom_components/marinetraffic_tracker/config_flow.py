@@ -29,6 +29,9 @@ from .const import (
     CONF_STALE_TIMEOUT,
     CONF_TRACKING_MODE,
     CONF_UPDATE_INTERVAL,
+    CONF_VESSEL_LOG,
+    CONF_VESSEL_LOG_FORMAT,
+    CONF_VESSEL_LOG_RETENTION_DAYS,
     CONF_WEST,
     DATA_SOURCE_KYSTVERKET,
     DEFAULT_CREATE_AREA_ZONE,
@@ -38,10 +41,14 @@ from .const import (
     DEFAULT_STALE_TIMEOUT,
     DEFAULT_TRACKING_MODE,
     DEFAULT_UPDATE_INTERVAL,
+    DEFAULT_VESSEL_LOG,
+    DEFAULT_VESSEL_LOG_FORMAT,
+    DEFAULT_VESSEL_LOG_RETENTION_DAYS,
     DOMAIN,
     MIN_UPDATE_INTERVAL_API,
     TRACKING_MODE_BOX,
     TRACKING_MODE_RADIUS,
+    VESSEL_LOG_FORMATS,
     VESSEL_TYPE_LABELS,
 )
 from .kystverket_client import KystverketAuthError, KystverketClient
@@ -209,6 +216,26 @@ def _options_schema(defaults: dict[str, Any]) -> vol.Schema:
                 CONF_CREATE_AREA_ZONE,
                 default=defaults.get(CONF_CREATE_AREA_ZONE, DEFAULT_CREATE_AREA_ZONE),
             ): bool,
+            vol.Required(
+                CONF_VESSEL_LOG,
+                default=defaults.get(CONF_VESSEL_LOG, DEFAULT_VESSEL_LOG),
+            ): bool,
+            vol.Required(
+                CONF_VESSEL_LOG_FORMAT,
+                default=defaults.get(CONF_VESSEL_LOG_FORMAT, DEFAULT_VESSEL_LOG_FORMAT),
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=VESSEL_LOG_FORMATS,
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                    translation_key="vessel_log_format",
+                )
+            ),
+            vol.Required(
+                CONF_VESSEL_LOG_RETENTION_DAYS,
+                default=defaults.get(
+                    CONF_VESSEL_LOG_RETENTION_DAYS, DEFAULT_VESSEL_LOG_RETENTION_DAYS
+                ),
+            ): vol.All(int, vol.Range(min=0, max=365)),
         }
     )
 

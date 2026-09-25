@@ -75,6 +75,9 @@ Enter the **Client ID** and **Client Secret** you obtained in step 1.
 | **Vessel type filter** | *(all)* | Optionally limit tracking to specific AIS vessel categories (Cargo, Tanker, Passenger, Fishing, etc.).  Leave empty to track all types. |
 | **Exclude anchored / moored vessels** | Off | When enabled, vessels with AIS status *At Anchor* or *Moored* are hidden from the live map and device trackers. |
 | **Show tracked area on map** | On | Draws the tracked area as a zone on the Home Assistant map.  The zone is not passive, so a person inside it and outside every smaller zone will report it as their location. |
+| **Write vessel log files** | Off | Appends every observation, with all AIS fields, to a daily file in `config/marinetraffic_tracker/`.  See the README for the column reference and sizing guidance. |
+| **Vessel log format** | CSV | `CSV` opens directly in a spreadsheet; `JSON Lines` is easier to process in scripts. |
+| **Vessel log retention (days)** | 7 | Log files older than this are deleted.  Set to `0` to keep them indefinitely. |
 
 ---
 
