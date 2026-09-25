@@ -17,7 +17,10 @@ from .client import VesselData, _haversine_km, _nav_status_to_str
 _LOGGER = logging.getLogger(__name__)
 
 _TOKEN_URL = "https://id.barentswatch.no/connect/token"  # noqa: S105
-_VESSELS_URL = "https://live.ais.barentswatch.no/v1/combined"
+# ``/v1/combined`` is an open-ended live stream that never completes; the
+# ``/v1/latest`` variant returns a finite snapshot of the most recent message
+# per MMSI, which is what a polling coordinator needs.
+_VESSELS_URL = "https://live.ais.barentswatch.no/v1/latest/combined"
 _REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=60)
 _TOKEN_REFRESH_BUFFER = 60
 _HEADING_NOT_AVAILABLE = 511
@@ -153,9 +156,11 @@ class KystverketClient:
                     )
                 resp.raise_for_status()
                 payload = await resp.json(content_type=None)
-        except aiohttp.ServerTimeoutError as exc:
-            _LOGGER.error("Timeout obtaining BarentsWatch token: %s", exc)
-            raise
+        except TimeoutError as exc:
+            _LOGGER.error("Timeout obtaining BarentsWatch token")
+            raise TimeoutError(
+                "Timed out requesting BarentsWatch access token"
+            ) from exc
         except aiohttp.ClientConnectionError as exc:
             _LOGGER.error("Connection error obtaining BarentsWatch token: %s", exc)
             raise
@@ -256,14 +261,17 @@ class KystverketClient:
                         return await resp.json(content_type=None)
                     except (JSONDecodeError, aiohttp.ContentTypeError):
                         return self._parse_ndjson(await resp.text())
-            except aiohttp.ServerTimeoutError as exc:
+            except TimeoutError as exc:
                 _LOGGER.warning(
-                    "Timeout fetching BarentsWatch vessel data (attempt %d/%d): %s",
+                    "Timeout fetching BarentsWatch vessel data (attempt %d/%d)",
                     attempt + 1,
                     max_attempts,
-                    exc,
                 )
-                last_exc = exc
+                last_exc = TimeoutError(
+                    f"Timed out after {_REQUEST_TIMEOUT.total:.0f}s fetching "
+                    f"vessel data from {_VESSELS_URL}"
+                )
+                last_exc.__cause__ = exc
                 if attempt + 1 < max_attempts:
                     await asyncio.sleep(_RETRY_BASE_DELAY * (2 ** attempt))
             except aiohttp.ClientConnectionError as exc:

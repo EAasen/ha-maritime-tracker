@@ -114,7 +114,7 @@ An error response indicates incorrect credentials or missing scope.
 Use the Home Assistant network tools or the SSH add-on to test connectivity to the BarentsWatch API:
 
 ```bash
-curl -I "https://live.ais.barentswatch.no/v1/combined"
+curl -I "https://live.ais.barentswatch.no/v1/latest/combined"
 ```
 
 You should receive an HTTP 401 (Unauthorized) which confirms the endpoint is reachable.  An HTTP connection error or timeout indicates a network problem between Home Assistant and the internet.

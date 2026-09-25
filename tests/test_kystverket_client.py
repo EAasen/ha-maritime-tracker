@@ -370,7 +370,7 @@ async def test_get_access_token_classifies_invalid_credentials() -> None:
 
 @pytest.mark.asyncio
 async def test_fetch_payload_raises_on_timeout() -> None:
-    """A ServerTimeoutError should be re-raised after exhausting retries."""
+    """A timeout should be re-raised with a descriptive message after retries."""
     session = MagicMock()
 
     def _get_side_effect(*_args, **_kwargs):
@@ -380,7 +380,7 @@ async def test_fetch_payload_raises_on_timeout() -> None:
 
     client = _make_client_with_session(session)
     with patch("asyncio.sleep", new_callable=AsyncMock):
-        with pytest.raises(aiohttp.ServerTimeoutError):
+        with pytest.raises(TimeoutError, match="Timed out"):
             await client._fetch_payload("token", 60, 6, 59, 5)
 @pytest.mark.asyncio
 async def test_async_validate_credentials_requests_access_token() -> None:

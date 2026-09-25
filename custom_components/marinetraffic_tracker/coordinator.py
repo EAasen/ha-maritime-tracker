@@ -422,8 +422,11 @@ class MarineTrafficCoordinator(DataUpdateCoordinator[dict[str, VesselData]]):
             _LOGGER.error("Authentication error from data source: %s", exc)
             raise ConfigEntryAuthFailed(str(exc)) from exc
         except Exception as exc:  # noqa: BLE001
-            _LOGGER.error("Data source fetch failed: %s", exc)
-            return None, str(exc)
+            # Some exceptions (e.g. TimeoutError) carry an empty message, so fall
+            # back to the class name to keep the log actionable.
+            detail = str(exc) or type(exc).__name__
+            _LOGGER.error("Data source fetch failed: %s", detail)
+            return None, detail
 
     async def _async_update_data(self) -> dict[str, VesselData]:
         """Fetch fresh vessel data, merge into registry, purge stale entries.
