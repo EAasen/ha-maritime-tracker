@@ -531,6 +531,17 @@ class MarineTrafficConfigFlow(ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
+    async def async_step_import(self, import_data: dict[str, Any]) -> ConfigFlowResult:
+        """Handle import from YAML configuration.
+
+        Enables YAML-based configuration while still showing the integration
+        in the Services & Devices UI discovery list.
+        """
+        # Forward to the user step to handle via UI flow
+        self._data = {CONF_DATA_SOURCE: DATA_SOURCE_KYSTVERKET}
+        self._data.update(import_data)
+        return await self.async_step_credentials()
+
     def _unique_id(self) -> str:
         """Build a stable unique ID for the tracking area."""
         mode = self._data.get(CONF_TRACKING_MODE, TRACKING_MODE_RADIUS)

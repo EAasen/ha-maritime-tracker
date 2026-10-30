@@ -42,8 +42,9 @@ Official Kystverket AIS maritime tracker for Home Assistant. Real-time vessel tr
 ### 3. Add the integration
 
 1. Go to **Settings → Devices & Services → Add Integration**.
-2. Search for **Norwegian Maritime Tracker**.
+2. Search for **Norwegian Maritime Tracker** (now discoverable in Home Assistant's integration list).
 3. Follow the setup wizard — pick a radius or bounding box, enter your credentials, and set the update interval.
+4. **Tip:** After configuration, add a **Map** card to your dashboard to see vessels appear automatically on the map.
 
 ---
 
@@ -66,7 +67,7 @@ A step-by-step walkthrough from nothing installed to vessels on your map.
 2. Click the **⋮** menu (top right) → **Custom repositories**.
 3. Paste `https://github.com/EAasen/ha-maritime-tracker` into **Repository**, choose **Integration** as the category, and click **Add**.
 4. Search HACS for **Norwegian Maritime Tracker** and click **Download**. Accept the offered version (newest).
-5. **Restart Home Assistant** — **Settings → System → ⋮ → Restart Home Assistant**. The integration will not appear in the Add Integration list until you do.
+5. **Restart Home Assistant** — **Settings → System → ⋮ → Restart Home Assistant**. The integration will now appear in the Add Integration list as **Norwegian Maritime Tracker**.
 
 ### Step 2b — Install manually
 

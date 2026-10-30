@@ -136,12 +136,46 @@ This option is particularly useful if your monitored area is a port where many v
 
 ---
 
-## 7. Changing Settings After Setup
+## 8. Map Integration
 
-Options can be changed without re-adding the integration:
+The Norwegian Maritime Tracker automatically integrates with Home Assistant's map display. Once the integration is configured, all tracked vessels appear as pins on the map:
 
-1. Go to **Settings → Devices & Services**.
-2. Find **Norwegian Maritime Tracker** and click **Configure**.
-3. Adjust the options and click **Submit**.
+### Automatic Map Display
 
-Changes take effect on the next API poll.
+- **Device Tracker Entities**: Each vessel becomes a `device_tracker` entity with real-time latitude/longitude
+- **Home Assistant Map Card**: Vessels appear automatically on the default map without additional setup
+- **Live Updates**: Pins move in real-time as vessel positions update
+- **Tracking Area Zone**: If enabled (default), the tracked monitoring area itself appears as a zone on the map
+
+### Map Card Configuration
+
+No configuration is needed — just add a **Map** card to your dashboard:
+
+1. Go to **Dashboard**
+2. Click **Edit dashboard** (pencil icon)
+3. Click **Add card** → search for **Map**
+4. The map will automatically show all `device_tracker` entities including vessels
+
+### Viewing Vessel Details
+
+Click on a vessel pin to see:
+- Vessel name and MMSI
+- Current speed and heading
+- Navigational status (underway, at anchor, etc.)
+- Destination and ETA
+- Photo thumbnail
+- Last position update
+
+### Area Zone Visibility
+
+When **Create tracking area zone** is enabled (default):
+
+- A zone representing your monitored area appears on the map
+- The zone is **non-passive** (shows in entity list and on map)
+- Shows boundaries of the tracking region
+- Useful for understanding coverage area
+- Disable in options if you prefer not to see it on the map
+
+> **Note**: Like the Flight Radar 24 integration, vessel tracking is purely informational — Home Assistant will not trigger automations based on vessel zone entry/exit without additional template sensors.
+
+

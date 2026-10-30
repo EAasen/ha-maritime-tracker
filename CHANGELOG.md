@@ -4,6 +4,32 @@ Notable changes to Norwegian Maritime Tracker are recorded here. Work under
 `Unreleased` is implemented in the repository but is not yet a published
 release; the integration version remains unchanged until release preparation.
 
+## Unreleased
+
+### UX Improvements
+
+**Integration Discovery & Map Display**
+- ✨ Added `integration_type: "service"` to manifest for automatic Home Assistant discovery
+  - Integration now appears in **Settings → Devices & Services → Create Integration**
+  - Users can search for and add the integration via UI without manual YAML configuration
+  - Aligns with Home Assistant integration standards (comparable to Flight Radar 24)
+- ✨ Added `async_step_import()` to config flow for YAML configuration support
+  - Users can choose between UI-based setup or manual YAML configuration
+  - Maintains backward compatibility with existing configurations
+- 📚 Documented automatic map integration in [docs/configuration.md](docs/configuration.md)
+  - New Section 8: "Map Integration" explains vessel display on Home Assistant maps
+  - Clarifies how to add Map cards to dashboards
+  - Describes area zone visibility and configuration
+  - Notes comparison with Flight Radar 24 integration
+
+### Changes
+
+- Manifest: Added `"integration_type": "service"` field
+- Config Flow: Added `async_step_import()` method to MarineTrafficConfigFlow class
+- Documentation: Extended configuration guide with map integration details
+
+---
+
 ## v1.2.0 (October 2026)
 
 **Release Focus:** Production-ready WebSocket dashboard, persistent watchlist, and comprehensive testing.
