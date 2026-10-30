@@ -51,6 +51,7 @@ from .const import (
     CONF_VESSEL_LOG,
     CONF_VESSEL_LOG_FORMAT,
     CONF_VESSEL_LOG_RETENTION_DAYS,
+    CONF_WATCHLIST_MMSI,
     CONF_WEST,
     DATA_SOURCE_AISHUB,
     DATA_SOURCE_KYSTVERKET,
@@ -65,6 +66,7 @@ from .const import (
     DEFAULT_VESSEL_LOG,
     DEFAULT_VESSEL_LOG_FORMAT,
     DEFAULT_VESSEL_LOG_RETENTION_DAYS,
+    DEFAULT_WATCHLIST_MMSI,
     DOMAIN,
     EVENT_VESSEL_STATUS_CHANGED,
     MIN_UPDATE_INTERVAL,
@@ -281,6 +283,9 @@ class MarineTrafficCoordinator(DataUpdateCoordinator[dict[str, VesselData]]):
         # Anchored/moored vessel registry — used when exclusion options are
         # enabled so these vessels are tracked but not exposed in coordinator.data.
         self._anchored_vessels: dict[str, VesselData] = {}
+        # Watchlist vessel registry — tracks watched MMSIs outside the area.
+        # Does not contribute to area counts/statistics.
+        self._watchlist_vessels: dict[str, VesselData] = {}
         # Per-vessel position history — stores recent (lat, lon, timestamp) tuples.
         self._position_history: dict[str, list[dict]] = {}
         # Historical statistics — persists even after vessels leave the active registry.
@@ -374,6 +379,16 @@ class MarineTrafficCoordinator(DataUpdateCoordinator[dict[str, VesselData]]):
         """
         return dict(self._anchored_vessels)
 
+    @property
+    def watchlist_vessels(self) -> dict[str, VesselData]:
+        """Return watched vessels that are currently outside the tracking area.
+
+        This dict is populated when watchlist MMSIs are configured in options.
+        Watched vessels do not contribute to area counts or statistics.
+        Vessels may appear here or in the area vessels dict, but not both.
+        """
+        return dict(self._watchlist_vessels)
+
     # ------------------------------------------------------------------
     # Public helpers
     # ------------------------------------------------------------------
@@ -386,6 +401,35 @@ class MarineTrafficCoordinator(DataUpdateCoordinator[dict[str, VesselData]]):
         history has been recorded for the given MMSI.
         """
         return list(self._position_history.get(mmsi, []))
+
+    def get_vessel(self, mmsi: str) -> VesselData | None:
+        """Resolve a vessel from area or watchlist by MMSI.
+
+        Args:
+            mmsi: The MMSI to look up.
+
+        Returns:
+            The VesselData if found in either area or watchlist, or None.
+            Area vessels take precedence over watchlist if somehow present in both.
+        """
+        if mmsi in self._vessels:
+            return self._vessels[mmsi]
+        if mmsi in self._watchlist_vessels:
+            return self._watchlist_vessels[mmsi]
+        return None
+
+    def get_watched_mmsi_list(self) -> list[str]:
+        """Return the currently configured watchlist MMSI list.
+
+        Returns:
+            A sorted list of watched MMSI strings, or an empty list if none
+            are configured.
+        """
+        watchlist = self._entry.options.get(
+            CONF_WATCHLIST_MMSI,
+            self._entry.data.get(CONF_WATCHLIST_MMSI, DEFAULT_WATCHLIST_MMSI),
+        )
+        return sorted(list(watchlist)) if watchlist else []
 
     async def async_load_status_baselines(self) -> None:
         """Restore persisted event baselines before the first coordinator poll."""
@@ -807,10 +851,36 @@ class MarineTrafficCoordinator(DataUpdateCoordinator[dict[str, VesselData]]):
             del self._anchored_vessels[mmsi]
             self._position_history.pop(mmsi, None)
 
+        # Process watchlist: update or remove watched vessels that appeared in the snapshot.
+        # Watched vessels outside the area are tracked separately and do not contribute
+        # to area counts or statistics.
+        watched_mmsis = set(self.get_watched_mmsi_list())
+        for mmsi in watched_mmsis:
+            if mmsi in merged:
+                # Watched vessel is in the snapshot; update watchlist registry.
+                # Remove from area registry if it was there (shouldn't happen for watched).
+                self._vessels.pop(mmsi, None)
+                self._anchored_vessels.pop(mmsi, None)
+                # Add to watchlist.
+                self._watchlist_vessels[mmsi] = merged[mmsi]
+            else:
+                # Watched vessel not in snapshot; check if it's stale in watchlist.
+                if mmsi in self._watchlist_vessels:
+                    vessel = self._watchlist_vessels[mmsi]
+                    if vessel.last_seen < stale_cutoff:
+                        _LOGGER.debug(
+                            "Removing stale watched vessel MMSI=%s (last seen >%ds ago)",
+                            mmsi,
+                            self.stale_timeout_seconds,
+                        )
+                        del self._watchlist_vessels[mmsi]
+                        self._position_history.pop(mmsi, None)
+
         _LOGGER.debug(
-            "Poll complete: %d active vessel(s), %d anchored, %d stale removed",
+            "Poll complete: %d active vessel(s), %d anchored, %d watched, %d stale removed",
             len(self._vessels),
             len(self._anchored_vessels),
+            len(self._watchlist_vessels),
             len(stale) + len(stale_anchored),
         )
         # Reset failure counter and record timestamp on a successful poll.
