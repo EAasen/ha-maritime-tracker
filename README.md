@@ -259,14 +259,58 @@ Earlier scraping-based sources (MarineTraffic, VesselFinder, AISHub) are **depre
 
 ---
 
+## Testing
+
+The integration includes comprehensive test coverage with **33+ test modules** covering:
+
+- **Unit tests** for all core functionality (client APIs, coordinators, filters)
+- **Integration tests** for feature interactions (watchlist, events, persistence)
+- **WebSocket API tests** for real-time dashboard communication
+- **Fixture tests** for snapshot validation
+
+### Quick Test Run
+
+```bash
+# Run all tests
+pytest tests/ -v --cov=custom_components/marinetraffic_tracker
+
+# Run specific test category
+pytest tests/test_watchlist.py tests/test_websocket_api.py -v
+```
+
+See [**Testing Guide**](docs/TESTING_GUIDE.md) for comprehensive testing instructions including:
+- Environment setup (development & HAOS)
+- Unit test execution
+- Integration test workflows
+- Manual HAOS testing procedures
+- Validation checklists
+- Performance testing
+- Troubleshooting
+
+### CI / CD
+
+GitHub Actions runs automated tests on:
+- Every pull request
+- Every push to main branch
+- Weekly scheduled runs
+- Version compatibility matrix (HA 2025.1+)
+
+Workflows include:
+- **Tests** — all 33+ unit tests with coverage
+- **Lint** — Ruff, MyPy, Pylint
+- **Validate** — manifest, translations, YAML
+- **Publish** — automated release to HACS
+
+For repository protection, configure the `Tests`, `Lint`, and `Validate` workflows as required status checks on `main`, and require at least one approving code review before merge.
+
+---
+
 ## Notes
 
 - The integration domain remains `marinetraffic_tracker` for compatibility with existing installs.
 - The active code path uses the official Norwegian feed instead of scraper-first logic.
 - International and multi-source tracking is planned for a later v2.0.0 roadmap release.
 
-## CI / CD
+## Version History
 
-GitHub Actions now provides separate workflows for tests, linting, validation, and tagged releases.
-
-For repository protection, configure the `Tests`, `Lint`, and `Validate` workflows as required status checks on `main`, and require at least one approving code review before merge.
+See [CHANGELOG.md](CHANGELOG.md) for released versions and [docs/PHASE_*.md](docs/) for development phase documentation.

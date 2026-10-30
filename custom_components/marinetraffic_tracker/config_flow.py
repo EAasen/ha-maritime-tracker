@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any
+from uuid import uuid4
 
 import aiohttp
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
@@ -24,6 +25,7 @@ from .const import (
     CONF_LATITUDE,
     CONF_LONGITUDE,
     CONF_NORTH,
+    CONF_PORTS,
     CONF_RADIUS_KM,
     CONF_SOUTH,
     CONF_STALE_TIMEOUT,
@@ -47,9 +49,12 @@ from .const import (
     DEFAULT_VESSEL_LOG_RETENTION_DAYS,
     DEFAULT_WATCHLIST_MMSI,
     DOMAIN,
+    MAX_PORTS,
     MAX_WATCHLIST_MMSI,
     MIN_UPDATE_INTERVAL_API,
     MMSI_LENGTH,
+    PORT_MAX_RADIUS_KM,
+    PORT_MIN_RADIUS_KM,
     TRACKING_MODE_BOX,
     TRACKING_MODE_RADIUS,
     VESSEL_LOG_FORMATS,
@@ -147,6 +152,103 @@ def _validate_watchlist_mmsi(value: list[str]) -> list[str]:
         validated.add(_validate_mmsi(mmsi))
     
     return sorted(list(validated))
+
+
+def _validate_port(port: dict[str, Any]) -> dict[str, Any]:
+    """Validate and normalize a single port definition.
+    
+    Args:
+        port: A port dict with id, name, latitude, longitude, radius_km.
+        
+    Returns:
+        The validated port dict.
+        
+    Raises:
+        vol.Invalid: If any field is invalid.
+    """
+    if not isinstance(port, dict):
+        raise vol.Invalid("Port must be a dictionary")
+    
+    # Validate name
+    name = str(port.get("name", "")).strip()
+    if not name:
+        raise vol.Invalid("Port name cannot be empty")
+    if len(name) > 50:
+        raise vol.Invalid("Port name cannot exceed 50 characters")
+    
+    # Validate latitude
+    try:
+        latitude = float(port.get("latitude", 0))
+        if latitude < -90 or latitude > 90:
+            raise vol.Invalid("Latitude must be between -90 and 90")
+    except (ValueError, TypeError) as err:
+        raise vol.Invalid("Latitude must be a number") from err
+    
+    # Validate longitude
+    try:
+        longitude = float(port.get("longitude", 0))
+        if longitude < -180 or longitude > 180:
+            raise vol.Invalid("Longitude must be between -180 and 180")
+    except (ValueError, TypeError) as err:
+        raise vol.Invalid("Longitude must be a number") from err
+    
+    # Validate radius
+    try:
+        radius_km = float(port.get("radius_km", 1.0))
+        if radius_km < PORT_MIN_RADIUS_KM or radius_km > PORT_MAX_RADIUS_KM:
+            raise vol.Invalid(
+                f"Port radius must be between {PORT_MIN_RADIUS_KM} and {PORT_MAX_RADIUS_KM} km"
+            )
+    except (ValueError, TypeError) as err:
+        raise vol.Invalid("Radius must be a number") from err
+    
+    # Ensure ID exists
+    port_id = port.get("id")
+    if not port_id:
+        port_id = str(uuid4())
+    
+    return {
+        "id": port_id,
+        "name": name,
+        "latitude": latitude,
+        "longitude": longitude,
+        "radius_km": radius_km,
+    }
+
+
+def _validate_ports(value: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Validate and normalize a list of port definitions.
+    
+    Args:
+        value: A list of port dicts.
+        
+    Returns:
+        The validated and deduplicated list of port dicts.
+        
+    Raises:
+        vol.Invalid: If any port is invalid or the list exceeds the maximum.
+    """
+    if not isinstance(value, list):
+        raise vol.Invalid("Ports must be a list")
+    
+    if len(value) > MAX_PORTS:
+        raise vol.Invalid(f"Maximum of {MAX_PORTS} ports allowed")
+    
+    validated_ports = []
+    seen_names = set()
+    
+    for port_data in value:
+        validated_port = _validate_port(port_data)
+        
+        # Check for duplicate names
+        port_name_lower = validated_port["name"].lower()
+        if port_name_lower in seen_names:
+            raise vol.Invalid("Port names must be unique")
+        seen_names.add(port_name_lower)
+        
+        validated_ports.append(validated_port)
+    
+    return validated_ports
 
 
 def _default_coordinates(hass: HomeAssistant, defaults: dict[str, Any]) -> tuple[float, float]:
@@ -470,7 +572,14 @@ class MarineTrafficOptionsFlow(OptionsFlow):
         self._config_entry = config_entry
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        """Handle the single-step options flow."""
+        """Handle the initial options menu step."""
+        return self.async_show_menu(
+            step_id="init",
+            menu_options=["options", "ports"],
+        )
+
+    async def async_step_options(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Handle the tracking options step."""
         current = {**self._config_entry.data, **self._config_entry.options}
         current.setdefault(CONF_DATA_SOURCE, DATA_SOURCE_KYSTVERKET)
         errors: dict[str, str] = {}
@@ -482,10 +591,73 @@ class MarineTrafficOptionsFlow(OptionsFlow):
                 errors["base"] = "invalid_options"
             else:
                 validated[CONF_DATA_SOURCE] = DATA_SOURCE_KYSTVERKET
+                # Preserve existing ports if not modified
+                if CONF_PORTS not in validated:
+                    validated[CONF_PORTS] = current.get(CONF_PORTS, [])
                 return self.async_create_entry(data=validated)
 
         return self.async_show_form(
-            step_id="init",
+            step_id="options",
             data_schema=_options_schema(current),
             errors=errors,
         )
+
+    async def async_step_ports(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Handle the port configuration step."""
+        current = {**self._config_entry.data, **self._config_entry.options}
+        current.setdefault(CONF_DATA_SOURCE, DATA_SOURCE_KYSTVERKET)
+        current.setdefault(CONF_PORTS, [])
+        errors: dict[str, str] = {}
+        
+        if user_input is not None:
+            try:
+                # Validate the ports list
+                ports_input = user_input.get(CONF_PORTS, [])
+                validated_ports = _validate_ports(ports_input) if ports_input else []
+                
+            except vol.Invalid as err:
+                _LOGGER.debug("Invalid ports configuration: %s", err)
+                errors["base"] = str(err) if str(err) else "invalid_options"
+            else:
+                # Update only the ports, preserve other options
+                current[CONF_PORTS] = validated_ports
+                return self.async_create_entry(data=current)
+        
+        # Build ports options for the selector
+        port_options = [
+            selector.SelectOptionDict(
+                value=f"{p['id']}|{p['name']}|{p['latitude']}|{p['longitude']}|{p['radius_km']}",
+                label=f"{p['name']} ({p['latitude']:.4f}, {p['longitude']:.4f}) r={p['radius_km']}km",
+            )
+            for p in current.get(CONF_PORTS, [])
+        ]
+        
+        # Build schema based on whether there are any ports
+        if port_options:
+            ports_schema = vol.Schema(
+                {
+                    vol.Optional(
+                        CONF_PORTS,
+                        default=current.get(CONF_PORTS, []),
+                    ): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=port_options,
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                        )
+                    )
+                }
+            )
+        else:
+            # No ports configured yet - show empty form
+            ports_schema = vol.Schema({})
+        
+        return self.async_show_form(
+            step_id="ports",
+            data_schema=ports_schema,
+            errors=errors,
+            description_placeholders={
+                "port_count": str(len(current.get(CONF_PORTS, []))),
+                "max_ports": str(MAX_PORTS),
+            },
+        )
+

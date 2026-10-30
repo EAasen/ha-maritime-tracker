@@ -2,7 +2,7 @@
 
 **Project:** Norwegian Maritime Tracker for Home Assistant  
 **Last Updated:** 2026-10-30  
-**Overall Status:** 🟢 **Phase 4 Complete**  
+**Overall Status:** 🟡 **Phase 5.1 In Progress** (Core impl done, sensors/UI pending)
 
 ---
 
@@ -12,7 +12,7 @@ Four independently-reviewable features for a Flightradar24-inspired maritime das
 
 1. ✅ **Maritime dashboard map with vessel trails** (Phase 4)
 2. ⏳ **Persistent MMSI watchlist** (Phase 3 - in progress)
-3. ⏳ **Observed port-call board** (Phase 5 - ready)
+3. 🟡 **Observed port-call board** (Phase 5 - 50% complete: core done, UI pending)
 4. ✅ **AIS status-transition events for automations** (Phase 2)
 
 ---
@@ -97,19 +97,37 @@ Real-time map visualization with bounded data transport:
 
 ---
 
-### Phase 5 ⏳ - Observed Port-Call Board
+### Phase 5 🟡 - Observed Port-Call Board
 
-**Status:** Ready for implementation  
-**Tasks:** T016-T021 (design complete, implementation pending)
+**Status:** 50% complete (Phase 5.1 done, Phase 5.2 pending)
 
-Port geofencing and confirmed-call tracking:
-- Named port circles with stable IDs
-- Hysteresis confirmation (two fresh observations)
-- Bounded call history (no replay on restart)
-- Port sensors (present, recent arrivals, recent departures)
-- Port board panel on maritime card
+**Phase 5.1 ✅ - Port Configuration and Confirmed Calls** (COMPLETE THIS SESSION)
+- T016 ✅ Port config flow and management
+- T017 ✅ Port call state machine (port_calls.py created)
+- T017 ✅ Storage extension (PortEventStorage added)
+- T017 ✅ Coordinator integration (port tracking + events)
+- T018 ✅ Comprehensive test suite (21 tests)
 
-**Preparation:** `PHASE_5_PREPARATION.md` (complete roadmap)
+**P5.1 Deliverables:**
+- Named port circles with stable UUIDs
+- Hysteresis-based entry/exit confirmation (two observations)
+- Bounded call history (max 50 per port, no replay)
+- Port call events for automations (EVENT_PORT_CALL)
+- Full test coverage of core logic
+- No breaking changes to existing code
+
+**Key modules:** 
+- `port_calls.py` (new, 11.6 KB)
+- `storage.py` (extended, +450 lines)
+- `coordinator.py` (extended, +120 lines)
+- `config_flow.py` (extended, +250 lines)
+
+**Phase 5.2 ⏳ - Port Sensors and Dashboard** (PENDING)
+- T019 Port sensors (present, arrivals, departures)
+- T020 Port board UI (geofence overlay, board panel)
+- T021 Port board tests (sensor + frontend)
+- T022 Documentation updates
+- T023 Regression suite
 
 ---
 

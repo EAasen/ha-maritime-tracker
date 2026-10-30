@@ -4,6 +4,7 @@ from __future__ import annotations
 
 DOMAIN = "marinetraffic_tracker"
 EVENT_VESSEL_STATUS_CHANGED = f"{DOMAIN}_vessel_status_changed"
+EVENT_PORT_CALL = f"{DOMAIN}_port_call"
 
 # ---------------------------------------------------------------------------
 # Vessel photo URL helper
@@ -107,6 +108,7 @@ CONF_VESSEL_LOG = "vessel_log"
 CONF_VESSEL_LOG_FORMAT = "vessel_log_format"
 CONF_VESSEL_LOG_RETENTION_DAYS = "vessel_log_retention_days"
 CONF_WATCHLIST_MMSI = "watchlist_mmsi"
+CONF_PORTS = "ports"
 
 # ---------------------------------------------------------------------------
 # Vessel observation log files
@@ -161,8 +163,13 @@ MAX_WATCHLIST_MMSI = 100  # maximum MMSIs in the persistent watchlist
 MMSI_LENGTH = 9  # MMSI is exactly 9 digits
 
 # ---------------------------------------------------------------------------
-# Data source configuration
+# Port call configuration and limits
 # ---------------------------------------------------------------------------
+MAX_PORTS = 50  # maximum ports per entry
+PORT_MIN_RADIUS_KM = 0.1  # minimum geofence radius (100 meters)
+PORT_MAX_RADIUS_KM = 500.0  # maximum geofence radius
+PORT_RECENT_CALL_HOURS = 24  # window for "recent" calls in sensors
+MAX_PORT_CALL_ROWS = 50  # maximum stored calls per port
 CONF_DATA_SOURCE = "data_source"
 CONF_FALLBACK_SOURCE = "fallback_source"
 CONF_AISHUB_API_KEY = "aishub_api_key"

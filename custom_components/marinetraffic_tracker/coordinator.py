@@ -43,6 +43,7 @@ from .const import (
     CONF_LATITUDE,
     CONF_LONGITUDE,
     CONF_NORTH,
+    CONF_PORTS,
     CONF_RADIUS_KM,
     CONF_SOUTH,
     CONF_STALE_TIMEOUT,
@@ -68,13 +69,15 @@ from .const import (
     DEFAULT_VESSEL_LOG_RETENTION_DAYS,
     DEFAULT_WATCHLIST_MMSI,
     DOMAIN,
+    EVENT_PORT_CALL,
     EVENT_VESSEL_STATUS_CHANGED,
     MIN_UPDATE_INTERVAL,
     MIN_UPDATE_INTERVAL_API,
     TRACKING_MODE_RADIUS,
 )
 from .kystverket_client import KystverketAuthError, KystverketClient
-from .storage import VesselEventStorage
+from .port_calls import PortCallTracker, PortBaseline
+from .storage import VesselEventStorage, PortEventStorage
 from .vessel_events import VesselEventTracker
 from .vessel_log import VesselLogWriter, build_writer
 from .vesselfinder_client import VesselFinderClient
@@ -278,6 +281,9 @@ class MarineTrafficCoordinator(DataUpdateCoordinator[dict[str, VesselData]]):
             ),
         )
         self._status_storage: VesselEventStorage | None = None
+        self._port_tracker = PortCallTracker()
+        self._port_storage: PortEventStorage | None = None
+        self._port_baselines: dict[str, dict[str, Any]] = {}
         # Running vessel registry — persists across updates.
         self._vessels: dict[str, VesselData] = {}
         # Anchored/moored vessel registry — used when exclusion options are
@@ -439,10 +445,17 @@ class MarineTrafficCoordinator(DataUpdateCoordinator[dict[str, VesselData]]):
         if changed:
             self._status_storage.async_delay_save(self._status_tracker.baselines)
 
+    async def async_load_port_baselines(self) -> None:
+        """Restore persisted port call baselines before the first coordinator poll."""
+        self._port_storage = PortEventStorage(self.hass, self._entry.entry_id)
+        self._port_baselines = await self._port_storage.async_load()
+
     async def async_shutdown(self) -> None:
         """Flush event state before unloading this config entry."""
         if self._status_storage is not None:
             await self._status_storage.async_flush(self._status_tracker.baselines)
+        if self._port_storage is not None:
+            await self._port_storage.async_flush(self._port_baselines)
 
     @property
     def statistics(self) -> AreaStatistics:
@@ -892,6 +905,60 @@ class MarineTrafficCoordinator(DataUpdateCoordinator[dict[str, VesselData]]):
         self._consecutive_failures = 0
         self._last_successful_update = now
         await self._async_write_vessel_log(fresh, now)
+        
+        # Check for port calls if ports are configured and storage is ready
+        ports = config.get(CONF_PORTS, [])
+        if ports and self._port_storage is not None and self._port_tracker is not None:
+            # Check each observed vessel against all configured ports
+            for vessel in observations:  # Use all observations, not just active filtered ones
+                calls = self._port_tracker.check_vessel(
+                    {
+                        "mmsi": vessel.mmsi,
+                        "vessel_name": vessel.name,
+                        "latitude": vessel.latitude,
+                        "longitude": vessel.longitude,
+                        "msgtime": now,
+                        "eta": vessel.eta,
+                        "destination": vessel.destination,
+                    },
+                    ports,
+                    self._port_baselines,
+                )
+                
+                # Process and persist each call
+                for call in calls:
+                    _LOGGER.debug(
+                        "Port call detected: %s %s %s at %s",
+                        call.call_type.upper(),
+                        vessel.mmsi,
+                        vessel.name,
+                        call.port_name,
+                    )
+                    
+                    # Persist the call
+                    await self._port_storage.async_save_call(call)
+                    
+                    # Update baseline for this (port, mmsi) pair
+                    baseline = PortBaseline(
+                        port_id=call.port_id,
+                        mmsi=call.mmsi,
+                        last_known_inside=(call.call_type == "arrival"),
+                        last_known_timestamp=call.observed_at,
+                        baseline_version=1,
+                    )
+                    await self._port_storage.async_save_baseline(
+                        call.port_id, call.mmsi, baseline
+                    )
+                    if call.port_id not in self._port_baselines:
+                        self._port_baselines[call.port_id] = {}
+                    self._port_baselines[call.port_id][call.mmsi] = baseline
+                    
+                    # Fire event for automations
+                    self.hass.bus.async_fire(
+                        EVENT_PORT_CALL,
+                        call.as_dict(),
+                    )
+        
         return dict(self._vessels)
 
     # ------------------------------------------------------------------

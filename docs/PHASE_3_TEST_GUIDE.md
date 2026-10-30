@@ -31,6 +31,83 @@ python verify_phase3.py --files-only
 
 ---
 
+## Phase 1 & 2 Completion Verification
+
+Run these checks from the repository root before treating the Phase 1 and
+Phase 2 prerequisites as verified. These tests use mocked vessel-feed data;
+they do not require live Kystverket credentials or a separately running Home
+Assistant instance.
+
+### Phase 1: Shared Snapshot and Compatibility
+
+```bash
+python -m pytest tests/test_snapshot.py tests/test_kystverket_client.py tests/test_coordinator_snapshot.py tests/test_phase_1_extended.py -v
+```
+
+For a Phase 1 pass, assert all of the following:
+
+- Kystverket snapshot parsing keeps source-message time, local observation
+  time, and legacy timestamps distinct.
+- The coordinator uses one full snapshot per poll and partitions it into the
+  configured area without changing the legacy area result.
+- Radius and bounding-box area-query wrappers and the fallback path remain
+  usable when a client has no callable snapshot method.
+- Missing, old, and future source timestamps do not break fetching or silently
+  discard otherwise valid vessel observations.
+- Existing client parsing, retry, and authentication behavior remains covered
+  by the Kystverket client tests.
+
+### Phase 2: Status Transitions and Persistence
+
+Run the transition and storage tests:
+
+```bash
+python -m pytest tests/test_vessel_events.py tests/test_storage.py -v
+```
+
+Run the Home Assistant unload/reload integration check separately:
+
+```bash
+python -m pytest tests/test_integration.py::test_status_baseline_survives_entry_unload_and_reload -v
+```
+
+For a Phase 2 pass, assert all of the following:
+
+- The first valid observation establishes a baseline without firing an event;
+  a genuine status change fires `marinetraffic_vessel_status_changed` once with
+  the expected entry, vessel, status, timestamp, source, and position data.
+- Repeated or out-of-order observations do not produce duplicate events or
+  corrupt the existing baseline.
+- Unknown status, stale observations or gaps, and implausible future source
+  times break continuity; the next valid observation re-baselines without a
+  synthetic transition. Missing source time uses local observation time.
+- Transition detection runs before display filters, while area results and
+  existing entered/exited behavior remain unchanged; retain regression
+  coverage for both behaviors.
+- Versioned storage restores valid baselines, debounces writes, flushes on
+  unload, isolates config entries, expires stale baselines, and removes only
+  the requested entry's data. Invalid persisted data and storage failures are
+  surfaced rather than silently treated as success.
+- After unload and reload, a persisted baseline allows a subsequent genuine
+  status change to emit the expected event.
+
+### Phase 1/2 Acceptance Checklist
+
+- [ ] Phase 1 targeted pytest command exits with code `0`.
+- [ ] Phase 2 transition/storage pytest command exits with code `0`.
+- [ ] The unload/reload integration test exits with code `0`.
+- [ ] No relevant test is skipped or deselected without a documented reason.
+- [ ] Record the commands, exit codes, and pass/fail/skip counts in the
+  verification report.
+
+**Completion gate:** Phase 1 and Phase 2 are verified only when all three
+commands above pass. A file-existence check is not behavioral evidence. The
+full suite (`python -m pytest tests/ -v`) is a useful additional regression
+check, but does not replace these focused commands when reporting Phase 1/2
+completion.
+
+---
+
 ## Test Infrastructure
 
 ### Pytest Configuration
