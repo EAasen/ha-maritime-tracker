@@ -220,13 +220,13 @@ and first sighting after a gap generate no transition. Legacy events remain. ✅
 (REQ-004, REQ-005, REQ-010).**
 Use the full snapshot without extra network calls.
 
-- [ ] T007 [Plan:3.1] Add watchlist options and strict validation in `custom_components/marinetraffic_tracker/config_flow.py`, `const.py`, `strings.json`, and `translations/en.json`; preserve area unique-ID generation and all prior options on save. Prerequisites: T003.
-- [ ] T008 [Plan:3.1] Add separate watchlist state and a shared vessel resolver in `custom_components/marinetraffic_tracker/coordinator.py`; bound watched history and retain freshness/unknown distinctions without adding watchlisted vessels to area data/statistics. Prerequisites: T007.
-- [ ] T009 [Plan:3.1] Add the aggregate watchlist sensor in `custom_components/marinetraffic_tracker/sensor.py`; update `entity.py` and `device_tracker.py` to resolve watched vessels and deduplicate existing vessel identities while preserving disabled defaults. Prerequisites: T008.
-- [ ] T010 [Plan:3.1] Extend `tests/test_config_flow.py`, `tests/test_translations.py`, `tests/test_sensor_attributes.py`, `tests/test_entity_registry_defaults.py`, and `tests/test_vessel_device_info.py`; add `tests/test_watchlist.py` for outside-area continuity, filter independence, removal, persistence, no-match, stale data, and no additional requests. Prerequisites: T009.
+- [x] T007 [Plan:3.1] Add watchlist options and strict validation in `custom_components/marinetraffic_tracker/config_flow.py`, `const.py`, `strings.json`, and `translations/en.json`; preserve area unique-ID generation and all prior options on save. Prerequisites: T003. ✅ **COMPLETE** (01ace29)
+- [x] T008 [Plan:3.1] Add separate watchlist state and a shared vessel resolver in `custom_components/marinetraffic_tracker/coordinator.py`; bound watched history and retain freshness/unknown distinctions without adding watchlisted vessels to area data/statistics. Prerequisites: T007. ✅ **COMPLETE** (b578758)
+- [x] T009 [Plan:3.1] Add the aggregate watchlist sensor in `custom_components/marinetraffic_tracker/sensor.py`; update `entity.py` and `device_tracker.py` to resolve watched vessels and deduplicate existing vessel identities while preserving disabled defaults. Prerequisites: T008. ✅ **COMPLETE** (0b1f69c)
+- [x] T010 [Plan:3.1] Extend `tests/test_config_flow.py`, `tests/test_translations.py`, `tests/test_sensor_attributes.py`, `tests/test_entity_registry_defaults.py`, and `tests/test_vessel_device_info.py`; add `tests/test_watchlist.py` for outside-area continuity, filter independence, removal, persistence, no-match, stale data, and no additional requests. Prerequisites: T009. ✅ **COMPLETE** (c393bf2)
 
 Gate: watching an out-of-area MMSI changes the watchlist only, preserves its
-entity identity on entering/leaving the area, and does not increase fetch count.
+entity identity on entering/leaving the area, and does not increase fetch count. ✅ **VERIFIED**
 Phases 2 and 3 can be implemented independently after Phase 1, but changes to
 shared coordinator/lifecycle files must be integrated serially.
 
