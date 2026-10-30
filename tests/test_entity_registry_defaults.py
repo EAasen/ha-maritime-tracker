@@ -18,6 +18,7 @@ from custom_components.marinetraffic_tracker.device_tracker import MarineTraffic
 from custom_components.marinetraffic_tracker.sensor import (
     MarineTrafficCountSensor,
     MarineTrafficVesselSensor,
+    MarineTrafficWatchlistSensor,
 )
 
 # The backing attribute name created by HA's CachedProperties metaclass when
@@ -42,3 +43,12 @@ def test_count_sensor_enabled_by_default() -> None:
     its own ``__dict__`` (HA's Entity class defaults the value to True).
     """
     assert MarineTrafficCountSensor.__dict__.get(_BACKING_ATTR, True) is True
+
+
+def test_watchlist_sensor_enabled_by_default() -> None:
+    """Watchlist sensor must be enabled by default in the entity registry.
+
+    Like the count sensor, it's a global aggregate (not per-vessel), so it
+    should be enabled by default.
+    """
+    assert MarineTrafficWatchlistSensor.__dict__.get(_BACKING_ATTR, True) is True

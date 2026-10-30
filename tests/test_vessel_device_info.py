@@ -54,8 +54,12 @@ def _make_coordinator(vessels: dict[str, VesselData]) -> MagicMock:
     coord = MagicMock()
     coord.last_update_success = True
     coord.data = vessels
+    coord.watchlist_vessels = {}
     coord.anchored_vessels = {}
     coord.get_position_history = MagicMock(return_value=[])
+    coord.get_vessel = MagicMock(
+        side_effect=lambda mmsi: vessels.get(mmsi) or coord.watchlist_vessels.get(mmsi)
+    )
     return coord
 
 
@@ -233,3 +237,76 @@ class TestVesselTrackerDeviceInfo:
         sensor = _make_vessel_sensor(vessel)
         tracker = _make_vessel_tracker(vessel)
         assert sensor.device_info["identifiers"] == tracker.device_info["identifiers"]
+
+
+# ---------------------------------------------------------------------------
+# Watchlist vessel resolver tests
+# ---------------------------------------------------------------------------
+
+
+class TestWatchlistVesselResolver:
+    """Tests for get_vessel() resolver on watched vessels."""
+
+    def test_device_info_resolves_from_area_registry(self) -> None:
+        """get_vessel() should resolve vessels from the area registry."""
+        vessel = _make_vessel()
+        coord = _make_coordinator({vessel.mmsi: vessel})
+        sensor = _make_vessel_sensor(vessel)
+        sensor.coordinator = coord
+
+        device_info = sensor.device_info
+        assert device_info["name"] == "Test Vessel"
+
+    def test_device_info_resolves_from_watchlist_registry(self) -> None:
+        """get_vessel() should resolve vessels from the watchlist registry."""
+        vessel = _make_vessel()
+        coord = MagicMock()
+        coord.last_update_success = True
+        coord.data = {}  # Empty area registry
+        coord.watchlist_vessels = {vessel.mmsi: vessel}  # Vessel in watchlist
+        coord.anchored_vessels = {}
+        coord.get_position_history = MagicMock(return_value=[])
+        coord.get_vessel = MagicMock(return_value=vessel)
+
+        sensor = _make_vessel_sensor(None, mmsi=vessel.mmsi)
+        sensor.coordinator = coord
+
+        device_info = sensor.device_info
+        assert device_info["name"] == "Test Vessel"
+
+    def test_device_info_prefers_area_over_watchlist(self) -> None:
+        """get_vessel() should prefer area registry over watchlist."""
+        area_vessel = _make_vessel(name="Area Vessel")
+        watched_vessel = _make_vessel(name="Watched Vessel")
+
+        coord = MagicMock()
+        coord.last_update_success = True
+        coord.data = {area_vessel.mmsi: area_vessel}
+        coord.watchlist_vessels = {area_vessel.mmsi: watched_vessel}
+        coord.anchored_vessels = {}
+        coord.get_position_history = MagicMock(return_value=[])
+        coord.get_vessel = MagicMock(return_value=area_vessel)
+
+        sensor = _make_vessel_sensor(area_vessel)
+        sensor.coordinator = coord
+
+        device_info = sensor.device_info
+        assert device_info["name"] == "Area Vessel"
+
+    def test_tracker_device_info_uses_resolver(self) -> None:
+        """Tracker device_info should use get_vessel() resolver."""
+        vessel = _make_vessel()
+        coord = MagicMock()
+        coord.last_update_success = True
+        coord.data = {}
+        coord.watchlist_vessels = {vessel.mmsi: vessel}
+        coord.anchored_vessels = {}
+        coord.get_position_history = MagicMock(return_value=[])
+        coord.get_vessel = MagicMock(return_value=vessel)
+
+        tracker = _make_vessel_tracker(None, mmsi=vessel.mmsi)
+        tracker.coordinator = coord
+
+        device_info = tracker.device_info
+        assert device_info["name"] == "Test Vessel"
+        coord.get_vessel.assert_called()

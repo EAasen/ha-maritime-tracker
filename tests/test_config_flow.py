@@ -35,11 +35,13 @@ from custom_components.marinetraffic_tracker.const import (
     CONF_STALE_TIMEOUT,
     CONF_TRACKING_MODE,
     CONF_UPDATE_INTERVAL,
+    CONF_WATCHLIST_MMSI,
     CONF_WEST,
     DATA_SOURCE_KYSTVERKET,
     DEFAULT_EXCLUDE_ANCHORED,
     DEFAULT_EXCLUDE_MOORED,
     DEFAULT_STALE_TIMEOUT,
+    MMSI_LENGTH,
     MIN_UPDATE_INTERVAL_API,
     TRACKING_MODE_BOX,
     TRACKING_MODE_RADIUS,
@@ -408,3 +410,165 @@ def test_make_title_uses_new_branding() -> None:
         }
     )
     assert flow._make_title() == "Norwegian Maritime Tracker [60.00,5.00]–[61.00,6.00]"
+
+
+# ---------------------------------------------------------------------------
+# Watchlist MMSI validation tests
+# ---------------------------------------------------------------------------
+
+
+def test_watchlist_mmsi_accepts_valid_nine_digit_strings() -> None:
+    """Valid 9-digit MMSI strings should pass validation."""
+    from custom_components.marinetraffic_tracker.config_flow import _validate_watchlist_mmsi
+
+    # Single valid MMSI
+    result = _validate_watchlist_mmsi(["123456789"])
+    assert result == ["123456789"]
+
+    # Multiple valid MMSIs
+    result = _validate_watchlist_mmsi(["123456789", "555555555"])
+    assert result == ["123456789", "555555555"]
+
+
+def test_watchlist_mmsi_deduplicates_entries() -> None:
+    """Duplicate MMSIs should be deduplicated and sorted."""
+    from custom_components.marinetraffic_tracker.config_flow import _validate_watchlist_mmsi
+
+    result = _validate_watchlist_mmsi(["555555555", "123456789", "555555555"])
+    # Should be deduplicated and sorted
+    assert result == ["123456789", "555555555"]
+
+
+def test_watchlist_mmsi_rejects_empty_list() -> None:
+    """Empty watchlist should be accepted (optional feature)."""
+    from custom_components.marinetraffic_tracker.config_flow import _validate_watchlist_mmsi
+
+    result = _validate_watchlist_mmsi([])
+    assert result == []
+
+
+def test_watchlist_mmsi_rejects_invalid_length() -> None:
+    """MMSIs with incorrect digit length should be rejected."""
+    from custom_components.marinetraffic_tracker.config_flow import _validate_watchlist_mmsi
+
+    with pytest.raises(vol.Invalid):
+        _validate_watchlist_mmsi(["12345678"])  # 8 digits
+
+    with pytest.raises(vol.Invalid):
+        _validate_watchlist_mmsi(["1234567890"])  # 10 digits
+
+
+def test_watchlist_mmsi_rejects_non_digit_characters() -> None:
+    """MMSIs with non-digit characters should be rejected."""
+    from custom_components.marinetraffic_tracker.config_flow import _validate_watchlist_mmsi
+
+    with pytest.raises(vol.Invalid):
+        _validate_watchlist_mmsi(["12345678A"])  # Contains letter
+
+    with pytest.raises(vol.Invalid):
+        _validate_watchlist_mmsi(["123 45 678"])  # Contains spaces
+
+
+def test_watchlist_mmsi_constant_is_nine_digits() -> None:
+    """MMSI_LENGTH should be exactly 9 digits per IMO spec."""
+    assert MMSI_LENGTH == 9
+
+
+def test_watchlist_mmsi_field_in_options_schema() -> None:
+    """Watchlist MMSI field should be present in options schema."""
+    from custom_components.marinetraffic_tracker.config_flow import _options_schema
+
+    schema = _options_schema()
+    # Schema should have watchlist_mmsi field
+    assert CONF_WATCHLIST_MMSI in schema.schema
+
+
+def test_watchlist_mmsi_field_is_optional() -> None:
+    """Watchlist MMSI field should be optional in options."""
+    from custom_components.marinetraffic_tracker.config_flow import _options_schema
+
+    schema = _options_schema()
+    # Should validate without watchlist_mmsi (all fields have defaults)
+    result = schema({
+        CONF_UPDATE_INTERVAL: 60,
+        CONF_STALE_TIMEOUT: DEFAULT_STALE_TIMEOUT,
+        CONF_FILTER_VESSEL_TYPES: [],
+        CONF_EXCLUDE_ANCHORED: DEFAULT_EXCLUDE_ANCHORED,
+        CONF_EXCLUDE_MOORED: DEFAULT_EXCLUDE_MOORED,
+    })
+    assert result is not None
+
+
+def test_watchlist_mmsi_field_validates_on_submit() -> None:
+    """Options submit should validate watchlist MMSIs if provided."""
+    from custom_components.marinetraffic_tracker.config_flow import _options_schema
+
+    schema = _options_schema()
+    # Valid watchlist should pass
+    result = schema({
+        CONF_UPDATE_INTERVAL: 60,
+        CONF_STALE_TIMEOUT: DEFAULT_STALE_TIMEOUT,
+        CONF_FILTER_VESSEL_TYPES: [],
+        CONF_EXCLUDE_ANCHORED: DEFAULT_EXCLUDE_ANCHORED,
+        CONF_EXCLUDE_MOORED: DEFAULT_EXCLUDE_MOORED,
+        CONF_WATCHLIST_MMSI: ["123456789", "555555555"],
+    })
+    assert CONF_WATCHLIST_MMSI in result
+
+
+def test_watchlist_mmsi_schema_rejects_invalid() -> None:
+    """Options schema should reject invalid MMSIs."""
+    from custom_components.marinetraffic_tracker.config_flow import _options_schema
+
+    schema = _options_schema()
+    with pytest.raises(vol.Invalid):
+        schema({
+            CONF_UPDATE_INTERVAL: 60,
+            CONF_STALE_TIMEOUT: DEFAULT_STALE_TIMEOUT,
+            CONF_FILTER_VESSEL_TYPES: [],
+            CONF_EXCLUDE_ANCHORED: DEFAULT_EXCLUDE_ANCHORED,
+            CONF_EXCLUDE_MOORED: DEFAULT_EXCLUDE_MOORED,
+            CONF_WATCHLIST_MMSI: ["12345678"],  # Invalid: 8 digits
+        })
+
+
+@pytest.mark.asyncio
+async def test_options_flow_accepts_watchlist_mmsi() -> None:
+    """Options flow should accept and persist valid watchlist MMSIs."""
+    flow = _make_options_flow()
+
+    result = await flow.async_step_init(
+        {
+            CONF_UPDATE_INTERVAL: 60,
+            CONF_STALE_TIMEOUT: DEFAULT_STALE_TIMEOUT,
+            CONF_FILTER_VESSEL_TYPES: [],
+            CONF_EXCLUDE_ANCHORED: False,
+            CONF_EXCLUDE_MOORED: False,
+            CONF_WATCHLIST_MMSI: ["123456789", "555555555"],
+        }
+    )
+
+    assert result["type"] == "create_entry"
+    assert CONF_WATCHLIST_MMSI in result["data"]
+    assert result["data"][CONF_WATCHLIST_MMSI] == ["123456789", "555555555"]
+
+
+@pytest.mark.asyncio
+async def test_options_flow_rejects_invalid_watchlist() -> None:
+    """Options flow should reject invalid watchlist MMSIs."""
+    flow = _make_options_flow()
+
+    result = await flow.async_step_init(
+        {
+            CONF_UPDATE_INTERVAL: 60,
+            CONF_STALE_TIMEOUT: DEFAULT_STALE_TIMEOUT,
+            CONF_FILTER_VESSEL_TYPES: [],
+            CONF_EXCLUDE_ANCHORED: False,
+            CONF_EXCLUDE_MOORED: False,
+            CONF_WATCHLIST_MMSI: ["12345678"],  # Invalid: 8 digits
+        }
+    )
+
+    assert result["type"] == "form"
+    assert result["step_id"] == "init"
+    assert "watchlist_mmsi" in result["errors"]

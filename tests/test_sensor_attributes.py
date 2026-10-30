@@ -9,6 +9,7 @@ Verifies that MarineTrafficVesselSensor.extra_state_attributes:
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
@@ -34,9 +35,14 @@ from custom_components.marinetraffic_tracker.const import (
     ATTR_STATUS,
     ATTR_VESSEL_NAME,
     ATTR_VESSEL_TYPE,
+    ATTR_WATCHED_COUNT,
+    ATTR_WATCHED_VESSELS,
 )
 from custom_components.marinetraffic_tracker.device_tracker import MarineTrafficVesselTracker
-from custom_components.marinetraffic_tracker.sensor import MarineTrafficVesselSensor
+from custom_components.marinetraffic_tracker.sensor import (
+    MarineTrafficVesselSensor,
+    MarineTrafficWatchlistSensor,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -426,3 +432,89 @@ class TestCountSensorVesselsAttribute:
         attrs = sensor.extra_state_attributes
         assert attrs["vessels"] == []
         assert attrs["vessel_mmsis"] == []
+
+
+# ---------------------------------------------------------------------------
+# Watchlist sensor attribute tests
+# ---------------------------------------------------------------------------
+
+
+class TestWatchlistSensorAttributes:
+    """Tests for MarineTrafficWatchlistSensor attributes."""
+
+    def _make_watchlist_sensor(self, vessels: dict) -> MarineTrafficWatchlistSensor:
+        """Create a watchlist sensor with mocked coordinator."""
+        sensor = MarineTrafficWatchlistSensor.__new__(MarineTrafficWatchlistSensor)
+        coord = MagicMock()
+        coord.last_update_success = True
+        coord.watchlist_vessels = vessels
+        sensor.coordinator = coord
+        sensor._entry_id = "test_entry"
+        sensor._attr_unique_id = "test_entry_watchlist_count"
+        return sensor
+
+    def test_watchlist_sensor_has_watched_count_attribute(self) -> None:
+        """Watchlist sensor must have ATTR_WATCHED_COUNT attribute."""
+        vessel = _make_full_vessel()
+        sensor = self._make_watchlist_sensor({vessel.mmsi: vessel})
+        attrs = sensor.extra_state_attributes
+        assert ATTR_WATCHED_COUNT in attrs
+
+    def test_watchlist_sensor_has_watched_vessels_attribute(self) -> None:
+        """Watchlist sensor must have ATTR_WATCHED_VESSELS attribute."""
+        vessel = _make_full_vessel()
+        sensor = self._make_watchlist_sensor({vessel.mmsi: vessel})
+        attrs = sensor.extra_state_attributes
+        assert ATTR_WATCHED_VESSELS in attrs
+
+    def test_watchlist_sensor_state_is_vessel_count(self) -> None:
+        """Watchlist sensor state must be the count of watched vessels."""
+        v1 = _make_full_vessel("111111111")
+        v2 = _make_minimal_vessel("222222222")
+        sensor = self._make_watchlist_sensor({v1.mmsi: v1, v2.mmsi: v2})
+        assert sensor.state == 2
+
+    def test_watchlist_sensor_empty_when_no_watched_vessels(self) -> None:
+        """Watchlist sensor state must be 0 when no vessels watched."""
+        sensor = self._make_watchlist_sensor({})
+        assert sensor.state == 0
+
+    def test_watchlist_sensor_watched_vessels_list_includes_names(self) -> None:
+        """watched_vessels list must include vessel names."""
+        vessel = _make_full_vessel()
+        sensor = self._make_watchlist_sensor({vessel.mmsi: vessel})
+        attrs = sensor.extra_state_attributes
+        vessels = attrs[ATTR_WATCHED_VESSELS]
+        assert len(vessels) == 1
+        assert vessels[0][ATTR_VESSEL_NAME] == "FULL VESSEL"
+
+    def test_watchlist_sensor_watched_mmsis_list_includes_mmsis(self) -> None:
+        """watched_mmsis attribute must contain MMSI strings."""
+        v1 = _make_full_vessel("111111111")
+        v2 = _make_minimal_vessel("222222222")
+        sensor = self._make_watchlist_sensor({v1.mmsi: v1, v2.mmsi: v2})
+        attrs = sensor.extra_state_attributes
+        mmsis = attrs["watched_mmsis"]
+        assert "111111111" in mmsis
+        assert "222222222" in mmsis
+
+    def test_watchlist_sensor_watched_vessels_sorted_by_name(self) -> None:
+        """watched_vessels list must be sorted alphabetically by name."""
+        v1 = _make_full_vessel("111111111")
+        v1_renamed = replace(v1, name="ZEBRA VESSEL")
+        v2 = _make_minimal_vessel("222222222")
+        v2_renamed = replace(v2, name="ALPHA VESSEL")
+        sensor = self._make_watchlist_sensor(
+            {v1_renamed.mmsi: v1_renamed, v2_renamed.mmsi: v2_renamed}
+        )
+        attrs = sensor.extra_state_attributes
+        vessels = attrs[ATTR_WATCHED_VESSELS]
+        names = [v[ATTR_VESSEL_NAME] for v in vessels]
+        assert names == sorted(names)
+
+    def test_watchlist_sensor_attributes_empty_when_no_vessels(self) -> None:
+        """Watchlist sensor attributes must be empty lists when no vessels."""
+        sensor = self._make_watchlist_sensor({})
+        attrs = sensor.extra_state_attributes
+        assert attrs[ATTR_WATCHED_VESSELS] == []
+        assert attrs["watched_mmsis"] == []
