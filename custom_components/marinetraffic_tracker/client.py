@@ -125,6 +125,12 @@ class VesselData:
     # Data source that provided this observation (e.g. "marinetraffic", "aishub").
     # None when the source is unknown or not set by the client.
     source: str | None = None
+    # Source message time: ISO-8601 string of when the AIS message was created.
+    # Distinct from last_seen (local reception time). None when unavailable or unparseable.
+    source_msgtime: str | None = None
+    # Local reception time: datetime when the message was successfully parsed.
+    # Used for freshness checks and event confirmation in port calls and status transitions.
+    observation_time: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     @property
     def unique_id(self) -> str:

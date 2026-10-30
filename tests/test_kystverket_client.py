@@ -57,6 +57,10 @@ def test_parse_row_maps_core_fields() -> None:
     assert vessel.msgtime == "2026-05-22T20:00:00+00:00"
     assert vessel.eta == "2026-05-23T09:30:00+00:00"
     assert vessel.last_seen.isoformat() == "2026-05-22T20:00:00+00:00"
+    # Phase 1.1: verify observation metadata fields
+    assert vessel.source_msgtime == "2026-05-22T20:00:00+00:00"
+    assert vessel.observation_time is not None
+    assert vessel.observation_time.tzinfo is not None
 
 
 def test_parse_row_requires_mmsi_and_position() -> None:

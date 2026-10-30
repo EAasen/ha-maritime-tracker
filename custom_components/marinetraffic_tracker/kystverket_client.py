@@ -85,6 +85,30 @@ class KystverketClient:
         """Validate the configured BarentsWatch credentials."""
         await self._get_access_token()
 
+    async def get_snapshot(self) -> list[VesselData]:
+        """Fetch and return all available vessels in a single snapshot.
+
+        This method fetches the complete unfiltered vessel dataset from BarentsWatch
+        and returns all vessels without any geographic filtering. The snapshot is
+        suitable for partitioning into area, watchlist, and port-specific views.
+
+        Returns:
+            A list of VesselData objects representing all vessels in the feed.
+
+        Raises:
+            KystverketAuthError: When authentication fails.
+            TimeoutError: When the request times out.
+            aiohttp.ClientConnectionError: When the connection fails.
+        """
+        token = await self._get_access_token()
+        raw = await self._fetch_payload_full(token)
+        if raw is None:
+            self._access_token = None
+            self._token_expiry = None
+            token = await self._get_access_token()
+            raw = await self._fetch_payload_full(token, retry=False)
+        return self._parse_response(raw)
+
     async def get_vessels_in_box(
         self,
         north: float,
@@ -180,7 +204,6 @@ class KystverketClient:
         *,
         retry: bool = True,
     ) -> Any | None:
-        del north, east, south, west
         params = {
             "modelType": "Full",
             "modelFormat": "Geojson",
@@ -269,6 +292,117 @@ class KystverketClient:
             except aiohttp.ClientConnectionError as exc:
                 _LOGGER.warning(
                     "Connection error fetching BarentsWatch vessel data (attempt %d/%d): %s",
+                    attempt + 1,
+                    max_attempts,
+                    exc,
+                )
+                last_exc = exc
+                if attempt + 1 < max_attempts:
+                    await asyncio.sleep(_RETRY_BASE_DELAY * (2**attempt))
+
+        if last_exc is not None:
+            raise last_exc
+        return None
+
+    async def _fetch_payload_full(
+        self,
+        token: str,
+        *,
+        retry: bool = True,
+    ) -> Any | None:
+        """Fetch the full unfiltered vessel snapshot from BarentsWatch.
+
+        This is a variant of _fetch_payload that doesn't pass geographic bounds,
+        allowing retrieval of all available vessels for later partitioning.
+        """
+        params = {
+            "modelType": "Full",
+            "modelFormat": "Geojson",
+        }
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/json",
+        }
+
+        last_exc: Exception | None = None
+        max_attempts = _MAX_RETRIES if retry else 1
+        for attempt in range(max_attempts):
+            try:
+                _LOGGER.debug("GET %s (full snapshot, attempt %d/%d)", _VESSELS_URL, attempt + 1, max_attempts)
+                async with self._session.get(
+                    _VESSELS_URL,
+                    headers=headers,
+                    params=params,
+                    timeout=_REQUEST_TIMEOUT,
+                ) as resp:
+                    if resp.status == 401 and retry:
+                        _LOGGER.debug(
+                            "BarentsWatch returned 401 — token may have expired; will re-auth"
+                        )
+                        return None
+                    if resp.status == 401:
+                        raise KystverketAuthError(
+                            "BarentsWatch API authentication failed (HTTP 401) "
+                            "after refreshing the access token."
+                        )
+                    if resp.status == 403:
+                        _LOGGER.error(
+                            "BarentsWatch returned HTTP 403 Forbidden. "
+                            "Check that your API credentials have the 'ais' scope."
+                        )
+                        raise KystverketAuthError(
+                            "BarentsWatch API access forbidden (HTTP 403). "
+                            "Credentials lack the required 'ais' scope."
+                        )
+                    if resp.status == 429:
+                        if not retry:
+                            resp.raise_for_status()
+                        retry_after = int(resp.headers.get("Retry-After", 0))
+                        delay = retry_after if retry_after > 0 else _RETRY_BASE_DELAY * (2**attempt)
+                        _LOGGER.warning(
+                            "BarentsWatch rate-limited (HTTP 429); retrying in %.0f s "
+                            "(attempt %d/%d)",
+                            delay,
+                            attempt + 1,
+                            max_attempts,
+                        )
+                        await asyncio.sleep(delay)
+                        continue
+                    if resp.status >= 500:
+                        if not retry:
+                            resp.raise_for_status()
+                        delay = _RETRY_BASE_DELAY * (2**attempt)
+                        _LOGGER.warning(
+                            "BarentsWatch server error (HTTP %d); retrying in %.0f s "
+                            "(attempt %d/%d)",
+                            resp.status,
+                            delay,
+                            attempt + 1,
+                            max_attempts,
+                        )
+                        await asyncio.sleep(delay)
+                        continue
+                    resp.raise_for_status()
+                    try:
+                        return await resp.json(content_type=None)
+                    except (JSONDecodeError, aiohttp.ContentTypeError):
+                        return self._parse_ndjson(await resp.text())
+            except TimeoutError as exc:
+                _LOGGER.warning(
+                    "Timeout fetching BarentsWatch vessel snapshot (attempt %d/%d)",
+                    attempt + 1,
+                    max_attempts,
+                )
+                last_exc = TimeoutError(
+                    f"Timed out after {_REQUEST_TIMEOUT.total:.0f}s fetching "
+                    f"vessel data from {_VESSELS_URL}"
+                )
+                last_exc.__cause__ = exc
+                if attempt + 1 < max_attempts:
+                    await asyncio.sleep(_RETRY_BASE_DELAY * (2**attempt))
+            except aiohttp.ClientConnectionError as exc:
+                _LOGGER.warning(
+                    "Connection error fetching BarentsWatch vessel snapshot (attempt %d/%d): %s",
                     attempt + 1,
                     max_attempts,
                     exc,
@@ -374,6 +508,8 @@ class KystverketClient:
             other_part_keys=("d", "toStarboard", "dDimension"),
         )
 
+        now = datetime.now(UTC)
+        source_msgtime = msgtime if last_seen is not None else None
         return VesselData(
             mmsi=mmsi,
             name=name,
@@ -403,8 +539,10 @@ class KystverketClient:
             rate_of_turn=rate_of_turn,
             beam=beam,
             msgtime=msgtime,
-            last_seen=last_seen or datetime.now(UTC),
+            last_seen=last_seen or now,
             source="kystverket",
+            source_msgtime=source_msgtime,
+            observation_time=now,
         )
 
 
