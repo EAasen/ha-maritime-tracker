@@ -407,8 +407,45 @@ class MarineTrafficCoordinator(DataUpdateCoordinator[dict[str, VesselData]]):
 
         This helper isolates the try/except so that ``_async_update_data`` can
         cleanly fall through to the fallback client when the primary fails.
+        
+        For Kystverket clients, attempts to use get_snapshot() if available,
+        applying geographic filtering to get area-specific results. Falls back
+        to direct area queries for other clients or if snapshot is unavailable.
         """
         try:
+            # Phase 1.2: Try snapshot-based approach for Kystverket
+            if isinstance(client, KystverketClient) and hasattr(client, "get_snapshot"):
+                try:
+                    snapshot = await client.get_snapshot()
+                    # Filter snapshot to the configured area
+                    from .geo_filter import build_geo_filter
+                    
+                    geo_filter = build_geo_filter(config)
+                    if geo_filter is not None:
+                        area_vessels, _ = geo_filter.partition(snapshot)
+                        _LOGGER.debug(
+                            "Snapshot-based fetch: %d vessels in area (from %d total)",
+                            len(area_vessels),
+                            len(snapshot),
+                        )
+                        return area_vessels, None
+                    else:
+                        # No valid area filter configured; return full snapshot
+                        _LOGGER.debug(
+                            "Snapshot-based fetch: returning all %d vessels (no area filter)",
+                            len(snapshot),
+                        )
+                        return snapshot, None
+                except Exception as snapshot_exc:  # noqa: BLE001
+                    # Log snapshot attempt but fall through to standard area queries
+                    detail = str(snapshot_exc) or type(snapshot_exc).__name__
+                    _LOGGER.debug(
+                        "Snapshot fetch failed (%s); falling back to area query: %s",
+                        type(snapshot_exc).__name__,
+                        detail,
+                    )
+            
+            # Standard area-based fetch (used by all clients as fallback)
             if tracking_mode == TRACKING_MODE_RADIUS:
                 return (
                     await client.get_vessels_in_radius(
