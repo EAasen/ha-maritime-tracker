@@ -57,6 +57,8 @@ from .const import (
     ATTR_TOTAL_VESSELS_SEEN,
     ATTR_VESSEL_NAME,
     ATTR_VESSEL_TYPE,
+    ATTR_WATCHED_COUNT,
+    ATTR_WATCHED_VESSELS,
     DEFAULT_VESSEL_ICON,
     DOMAIN,
     VESSEL_TYPE_ICONS,
@@ -84,6 +86,7 @@ async def async_setup_entry(
     async_add_entities(
         [
             MarineTrafficCountSensor(coordinator, entry.entry_id),
+            MarineTrafficWatchlistSensor(coordinator, entry.entry_id),
             MarineTrafficStatisticsSensor(coordinator, entry.entry_id),
         ]
     )
@@ -182,6 +185,66 @@ class MarineTrafficCountSensor(MarineTrafficEntity, SensorEntity):
 
 
 # ---------------------------------------------------------------------------
+# Watchlist aggregate sensor
+# ---------------------------------------------------------------------------
+
+
+class MarineTrafficWatchlistSensor(MarineTrafficEntity, SensorEntity):
+    """Sensor reporting watched vessels currently observable outside the area."""
+
+    _attr_icon = "mdi:star"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = "vessels"
+    _attr_translation_key = "watchlist_count"
+
+    def __init__(
+        self,
+        coordinator: MarineTrafficCoordinator,
+        entry_id: str,
+    ) -> None:
+        super().__init__(coordinator, entry_id)
+        self._attr_unique_id = f"{entry_id}_watchlist"
+        self._attr_name = "Watched Vessel Count"
+
+    @property
+    def native_value(self) -> int:
+        """Return the number of currently-watched vessels outside the area."""
+        return len(self.coordinator.watchlist_vessels or {})
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose the watched vessel list with same structure as count sensor.
+
+        ``watched_mmsis`` — sorted list of watched MMSI strings.
+        ``watched_vessels`` — structured list of vessel snapshots in same
+        format as the count sensor's ``vessels`` attribute.
+        """
+        watched_data = self.coordinator.watchlist_vessels
+
+        def _vessel_summary(v: VesselData) -> dict[str, Any]:
+            return {
+                ATTR_MMSI: v.mmsi,
+                ATTR_VESSEL_NAME: v.name,
+                ATTR_VESSEL_TYPE: VESSEL_TYPE_MAP.get(v.vessel_type, f"Type {v.vessel_type}"),
+                ATTR_SPEED: v.speed,
+                ATTR_STATUS: v.status,
+                ATTR_HEADING: v.heading,
+                ATTR_DESTINATION: v.destination,
+                "latitude": v.latitude,
+                "longitude": v.longitude,
+                "entity_picture": vessel_photo_url(v.mmsi),
+            }
+
+        watched_list = [
+            _vessel_summary(v) for v in sorted(watched_data.values(), key=lambda x: x.name)
+        ]
+        return {
+            "watched_mmsis": sorted(watched_data.keys()),
+            ATTR_WATCHED_VESSELS: watched_list,
+        }
+
+
+# ---------------------------------------------------------------------------
 # Per-vessel sensor
 # ---------------------------------------------------------------------------
 
@@ -218,8 +281,11 @@ class MarineTrafficVesselSensor(MarineTrafficVesselEntity, SensorEntity):
 
     @property
     def _vessel(self) -> VesselData | None:
-        """Return current vessel data, or None if the vessel has gone stale."""
-        return (self.coordinator.data or {}).get(self._mmsi)
+        """Return current vessel data, or None if the vessel has gone stale.
+        
+        Resolves from both area and watchlist registries.
+        """
+        return self.coordinator.get_vessel(self._mmsi)
 
     # ------------------------------------------------------------------
     # Entity properties

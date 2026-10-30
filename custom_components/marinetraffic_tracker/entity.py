@@ -77,9 +77,9 @@ class MarineTrafficVesselEntity(MarineTrafficEntity):
         The device identifier is unique per (integration entry, MMSI) pair so
         that the sensor and device-tracker for the same vessel are grouped
         under one device.  The device name and model are kept up-to-date with
-        the latest coordinator data.
+        the latest coordinator data.  Vessel can be from area or watchlist.
         """
-        vessel = (self.coordinator.data or {}).get(self._mmsi)
+        vessel = self.coordinator.get_vessel(self._mmsi)
         name = vessel.name if vessel else f"Vessel {self._mmsi}"
         model = (
             VESSEL_TYPE_MAP.get(vessel.vessel_type, f"Type {vessel.vessel_type}")

@@ -115,5 +115,15 @@
         "jsonl": "JSON Lines (one object per line)"
       }
     }
+  },
+  "entity": {
+    "sensor": {
+      "vessel_count": {
+        "name": "Vessel Count"
+      },
+      "watchlist_count": {
+        "name": "Watched Vessel Count"
+      }
+    }
   }
 }

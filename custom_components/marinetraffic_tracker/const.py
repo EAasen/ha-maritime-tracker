@@ -61,6 +61,8 @@ ATTR_BEAM = "beam"
 ATTR_POSITION_HISTORY = "position_history"
 ATTR_ANCHORED_COUNT = "anchored_vessel_count"
 ATTR_ANCHORED_VESSELS = "anchored_vessels"
+ATTR_WATCHED_COUNT = "watched_vessel_count"
+ATTR_WATCHED_VESSELS = "watched_vessels"
 ATTR_DATA_SOURCE = "data_source"
 
 # ---------------------------------------------------------------------------
