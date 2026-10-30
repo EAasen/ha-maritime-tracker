@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import UTC, datetime, timedelta
 import json
-from json import JSONDecodeError
 import logging
 import math
+from datetime import UTC, datetime, timedelta
+from json import JSONDecodeError
 from typing import Any
 
 import aiohttp
@@ -328,7 +328,12 @@ class KystverketClient:
         max_attempts = _MAX_RETRIES if retry else 1
         for attempt in range(max_attempts):
             try:
-                _LOGGER.debug("GET %s (full snapshot, attempt %d/%d)", _VESSELS_URL, attempt + 1, max_attempts)
+                _LOGGER.debug(
+                    "GET %s (full snapshot, attempt %d/%d)",
+                    _VESSELS_URL,
+                    attempt + 1,
+                    max_attempts,
+                )
                 async with self._session.get(
                     _VESSELS_URL,
                     headers=headers,

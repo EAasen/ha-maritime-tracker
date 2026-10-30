@@ -138,7 +138,7 @@ class MarineTrafficVesselTracker(MarineTrafficVesselEntity, TrackerEntity):
     @property
     def _vessel(self) -> VesselData | None:
         """Return current :class:`VesselData` or ``None`` if vessel is stale.
-        
+
         Resolves from both area and watchlist registries.
         """
         return self.coordinator.get_vessel(self._mmsi)

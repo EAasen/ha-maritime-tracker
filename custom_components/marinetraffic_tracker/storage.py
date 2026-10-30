@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
-from typing import Any
+import logging
 from datetime import datetime
+from typing import Any
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
 
 from .const import DOMAIN, MAX_PORT_CALL_ROWS
-from .vessel_events import VesselStatusBaseline
 from .port_calls import PortBaseline, PortCall
+from .vessel_events import VesselStatusBaseline
+
+_LOGGER = logging.getLogger(__name__)
 
 STORAGE_VERSION = 1
 STORAGE_SAVE_DELAY = 2
@@ -78,7 +81,7 @@ class PortEventStorage:
 
     def __init__(self, hass: HomeAssistant, entry_id: str) -> None:
         """Initialize port event storage.
-        
+
         Args:
             hass: Home Assistant instance
             entry_id: Config entry ID
@@ -94,23 +97,23 @@ class PortEventStorage:
 
     async def async_load(self) -> dict[str, dict[str, PortBaseline]]:
         """Load and validate persisted port baselines.
-        
+
         Returns:
             Dict of {port_id: {mmsi: PortBaseline}}
         """
         stored = await self._store.async_load()
         if stored is None:
             return {}
-        
+
         if not isinstance(stored, dict) or not isinstance(stored.get("baselines"), dict):
             return {}
-        
+
         baselines_dict: dict[str, dict[str, PortBaseline]] = {}
-        
+
         for port_id, port_data in stored["baselines"].items():
             if not isinstance(port_data, dict):
                 continue
-            
+
             baselines_dict[port_id] = {}
             for mmsi, baseline_data in port_data.items():
                 if not isinstance(mmsi, str) or not mmsi.isdigit():
@@ -135,28 +138,28 @@ class PortEventStorage:
                         e,
                     )
                     continue
-        
+
         return baselines_dict
 
     async def async_load_calls(self) -> dict[str, list[PortCall]]:
         """Load all persisted port calls.
-        
+
         Returns:
             Dict of {port_id: [PortCall, ...]}
         """
         stored = await self._store.async_load()
         if stored is None:
             return {}
-        
+
         if not isinstance(stored, dict) or not isinstance(stored.get("calls"), dict):
             return {}
-        
+
         calls_dict: dict[str, list[PortCall]] = {}
-        
+
         for port_id, port_calls in stored["calls"].items():
             if not isinstance(port_calls, list):
                 continue
-            
+
             calls_dict[port_id] = []
             for call_data in port_calls:
                 if not isinstance(call_data, dict):
@@ -181,7 +184,7 @@ class PortEventStorage:
                         e,
                     )
                     continue
-        
+
         return calls_dict
 
     async def async_save_baseline(
@@ -191,7 +194,7 @@ class PortEventStorage:
         baseline: PortBaseline,
     ) -> None:
         """Save or update a vessel baseline for a port.
-        
+
         Args:
             port_id: Port identifier
             mmsi: Vessel MMSI
@@ -199,19 +202,19 @@ class PortEventStorage:
         """
         # Load current data
         stored = await self._store.async_load() or {}
-        
+
         if "baselines" not in stored:
             stored["baselines"] = {}
         if port_id not in stored["baselines"]:
             stored["baselines"][port_id] = {}
-        
+
         # Update baseline
         stored["baselines"][port_id][mmsi] = {
             "last_known_inside": baseline.last_known_inside,
             "last_known_timestamp": baseline.last_known_timestamp.isoformat(),
             "baseline_version": baseline.baseline_version,
         }
-        
+
         # Schedule save
         self._pending_data = stored
         self._store.async_delay_save(self._data_to_save, STORAGE_SAVE_DELAY)
@@ -221,34 +224,36 @@ class PortEventStorage:
         call: PortCall,
     ) -> None:
         """Persist a confirmed port call.
-        
+
         Args:
             call: PortCall object to save
         """
         # Load current data
         stored = await self._store.async_load() or {}
-        
+
         if "calls" not in stored:
             stored["calls"] = {}
         if call.port_id not in stored["calls"]:
             stored["calls"][call.port_id] = []
-        
+
         # Add new call
-        stored["calls"][call.port_id].append({
-            "port_name": call.port_name,
-            "mmsi": call.mmsi,
-            "vessel_name": call.vessel_name,
-            "call_type": call.call_type,
-            "observed_at": call.observed_at.isoformat(),
-            "reported_eta": call.reported_eta,
-            "reported_destination": call.reported_destination,
-            "last_position": list(call.last_position),
-        })
-        
+        stored["calls"][call.port_id].append(
+            {
+                "port_name": call.port_name,
+                "mmsi": call.mmsi,
+                "vessel_name": call.vessel_name,
+                "call_type": call.call_type,
+                "observed_at": call.observed_at.isoformat(),
+                "reported_eta": call.reported_eta,
+                "reported_destination": call.reported_destination,
+                "last_position": list(call.last_position),
+            }
+        )
+
         # Enforce retention limits: keep only the most recent MAX_PORT_CALL_ROWS
         if len(stored["calls"][call.port_id]) > MAX_PORT_CALL_ROWS:
             stored["calls"][call.port_id] = stored["calls"][call.port_id][-MAX_PORT_CALL_ROWS:]
-        
+
         # Schedule save
         self._pending_data = stored
         self._store.async_delay_save(self._data_to_save, STORAGE_SAVE_DELAY)
@@ -260,46 +265,46 @@ class PortEventStorage:
         limit: int = 50,
     ) -> list[PortCall]:
         """Retrieve recent calls for a port.
-        
+
         Args:
             port_id: Port identifier
             hours: Look back window in hours
             limit: Maximum number of calls to return
-        
+
         Returns:
             List of recent PortCall objects
         """
         calls_dict = await self.async_load_calls()
         port_calls = calls_dict.get(port_id, [])
-        
+
         # Filter by time window and limit
         now = datetime.now()
         recent_calls = []
-        
+
         for call in reversed(port_calls):  # Most recent first
             age_hours = (now - call.observed_at).total_seconds() / 3600
             if age_hours <= hours:
                 recent_calls.append(call)
                 if len(recent_calls) >= limit:
                     break
-        
+
         return list(reversed(recent_calls))  # Chronological order
 
     async def async_clear_port(self, port_id: str) -> None:
         """Clear all data for a port (e.g., on port deletion).
-        
+
         Args:
             port_id: Port identifier to clear
         """
         # Load current data
         stored = await self._store.async_load() or {}
-        
+
         # Remove port from baselines and calls
         if "baselines" in stored and port_id in stored["baselines"]:
             del stored["baselines"][port_id]
         if "calls" in stored and port_id in stored["calls"]:
             del stored["calls"][port_id]
-        
+
         # Save immediately
         self._pending_data = stored
         await self._store.async_save(stored)
@@ -309,12 +314,12 @@ class PortEventStorage:
         baselines_dict: dict[str, dict[str, PortBaseline]] | None = None,
     ) -> None:
         """Write current state before config entry unloads.
-        
+
         Args:
             baselines_dict: Optional dict of baselines to save
         """
         stored = await self._store.async_load() or {"baselines": {}, "calls": {}}
-        
+
         if baselines_dict:
             stored["baselines"] = {
                 port_id: {
@@ -327,7 +332,7 @@ class PortEventStorage:
                 }
                 for port_id, port_baselines in baselines_dict.items()
             }
-        
+
         await self._store.async_save(stored)
 
     def _data_to_save(self) -> dict[str, Any]:
@@ -339,7 +344,7 @@ class PortEventStorage:
     @classmethod
     async def async_remove_entry(cls, hass: HomeAssistant, entry_id: str) -> None:
         """Remove persisted port data for a deleted config entry.
-        
+
         Args:
             hass: Home Assistant instance
             entry_id: Config entry ID
@@ -350,4 +355,3 @@ class PortEventStorage:
             f"{_PORT_STORAGE_KEY}_{entry_id}",
         )
         await store.async_remove()
-

@@ -10,15 +10,13 @@ delivered through this API on demand with strict bounds.
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 from dataclasses import asdict, dataclass, field
-from datetime import UTC, datetime, timedelta
-from typing import Any, Callable
+from datetime import UTC, datetime
+from typing import Any
 
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.exceptions import Unauthorized
 from homeassistant.helpers.json import JSONEncoder
 
 from .const import DOMAIN
@@ -119,9 +117,7 @@ async def async_register_websocket_api(hass: HomeAssistant) -> None:
     )
 
 
-def _get_coordinator(
-    hass: HomeAssistant, entry_id: str
-) -> MarineTrafficCoordinator | None:
+def _get_coordinator(hass: HomeAssistant, entry_id: str) -> MarineTrafficCoordinator | None:
     """Get the coordinator for the given entry, or None if not found."""
     return hass.data.get(DOMAIN, {}).get(entry_id)
 
@@ -131,9 +127,7 @@ def _encode_response(data: Any) -> str:
     return json.dumps(data, cls=JSONEncoder)
 
 
-async def _async_handle_subscribe(
-    hass: HomeAssistant, connection: Any, msg: dict
-) -> None:
+async def _async_handle_subscribe(hass: HomeAssistant, connection: Any, msg: dict) -> None:
     """Handle subscribe command to receive live vessel updates."""
     try:
         entry_id = msg.get("entry_id")
@@ -178,16 +172,12 @@ async def _async_handle_subscribe(
         connection.send_error(msg["id"], ERROR_INTERNAL, str(err))
 
 
-async def _async_handle_unsubscribe(
-    hass: HomeAssistant, connection: Any, msg: dict
-) -> None:
+async def _async_handle_unsubscribe(hass: HomeAssistant, connection: Any, msg: dict) -> None:
     """Handle unsubscribe command to stop receiving updates."""
     try:
         subscription_id = msg.get("subscription_id")
         if not subscription_id:
-            connection.send_error(
-                msg["id"], ERROR_INVALID_REQUEST, "subscription_id required"
-            )
+            connection.send_error(msg["id"], ERROR_INVALID_REQUEST, "subscription_id required")
             return
 
         # Remove the subscription cleanup callback.
@@ -202,9 +192,7 @@ async def _async_handle_unsubscribe(
         connection.send_error(msg["id"], ERROR_INTERNAL, str(err))
 
 
-async def _async_handle_get_snapshot(
-    hass: HomeAssistant, connection: Any, msg: dict
-) -> None:
+async def _async_handle_get_snapshot(hass: HomeAssistant, connection: Any, msg: dict) -> None:
     """Handle get_snapshot command for paginated vessel list."""
     try:
         entry_id = msg.get("entry_id")
@@ -232,9 +220,7 @@ async def _async_handle_get_snapshot(
         connection.send_error(msg["id"], ERROR_INTERNAL, str(err))
 
 
-async def _async_handle_get_trail(
-    hass: HomeAssistant, connection: Any, msg: dict
-) -> None:
+async def _async_handle_get_trail(hass: HomeAssistant, connection: Any, msg: dict) -> None:
     """Handle get_trail command for vessel position history."""
     try:
         entry_id = msg.get("entry_id")
@@ -309,9 +295,11 @@ def _build_bounded_snapshot(
         snapshot = VesselSnapshot(
             mmsi=vessel.mmsi or "unknown",
             name=vessel.name,
-            position=(vessel.latitude, vessel.longitude)
-            if vessel.latitude is not None and vessel.longitude is not None
-            else None,
+            position=(
+                (vessel.latitude, vessel.longitude)
+                if vessel.latitude is not None and vessel.longitude is not None
+                else None
+            ),
             heading=vessel.heading,
             course=vessel.course,
             speed_knots=vessel.speed,

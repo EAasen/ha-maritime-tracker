@@ -57,7 +57,6 @@ from .const import (
     ATTR_TOTAL_VESSELS_SEEN,
     ATTR_VESSEL_NAME,
     ATTR_VESSEL_TYPE,
-    ATTR_WATCHED_COUNT,
     ATTR_WATCHED_VESSELS,
     DEFAULT_VESSEL_ICON,
     DOMAIN,
@@ -282,7 +281,7 @@ class MarineTrafficVesselSensor(MarineTrafficVesselEntity, SensorEntity):
     @property
     def _vessel(self) -> VesselData | None:
         """Return current vessel data, or None if the vessel has gone stale.
-        
+
         Resolves from both area and watchlist registries.
         """
         return self.coordinator.get_vessel(self._mmsi)
