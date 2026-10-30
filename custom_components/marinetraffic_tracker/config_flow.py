@@ -32,6 +32,7 @@ from .const import (
     CONF_VESSEL_LOG,
     CONF_VESSEL_LOG_FORMAT,
     CONF_VESSEL_LOG_RETENTION_DAYS,
+    CONF_WATCHLIST_MMSI,
     CONF_WEST,
     DATA_SOURCE_KYSTVERKET,
     DEFAULT_CREATE_AREA_ZONE,
@@ -44,8 +45,11 @@ from .const import (
     DEFAULT_VESSEL_LOG,
     DEFAULT_VESSEL_LOG_FORMAT,
     DEFAULT_VESSEL_LOG_RETENTION_DAYS,
+    DEFAULT_WATCHLIST_MMSI,
     DOMAIN,
+    MAX_WATCHLIST_MMSI,
     MIN_UPDATE_INTERVAL_API,
+    MMSI_LENGTH,
     TRACKING_MODE_BOX,
     TRACKING_MODE_RADIUS,
     VESSEL_LOG_FORMATS,
@@ -96,6 +100,53 @@ def _is_within_norway(latitude: float | None, longitude: float | None) -> bool:
         _NORWAY_BOUNDS["south"] <= latitude <= _NORWAY_BOUNDS["north"]
         and _NORWAY_BOUNDS["west"] <= longitude <= _NORWAY_BOUNDS["east"]
     )
+
+
+def _validate_mmsi(value: str) -> str:
+    """Validate and normalize a single MMSI string.
+    
+    Args:
+        value: A string representation of an MMSI.
+        
+    Returns:
+        The normalized MMSI string.
+        
+    Raises:
+        vol.Invalid: If the MMSI is not a valid 9-digit string.
+    """
+    mmsi_str = str(value).strip()
+    if not mmsi_str:
+        raise vol.Invalid("MMSI cannot be empty")
+    if len(mmsi_str) != MMSI_LENGTH:
+        raise vol.Invalid(f"MMSI must be exactly {MMSI_LENGTH} digits")
+    if not mmsi_str.isdigit():
+        raise vol.Invalid("MMSI must contain only digits")
+    return mmsi_str
+
+
+def _validate_watchlist_mmsi(value: list[str]) -> list[str]:
+    """Validate and normalize a list of MMSI strings.
+    
+    Args:
+        value: A list of MMSI strings.
+        
+    Returns:
+        The normalized and deduplicated list of MMSI strings.
+        
+    Raises:
+        vol.Invalid: If any MMSI is invalid or the list exceeds the maximum.
+    """
+    if not isinstance(value, list):
+        raise vol.Invalid("Watchlist MMSIs must be a list")
+    
+    if len(value) > MAX_WATCHLIST_MMSI:
+        raise vol.Invalid(f"Watchlist cannot exceed {MAX_WATCHLIST_MMSI} MMSIs")
+    
+    validated = set()
+    for mmsi in value:
+        validated.add(_validate_mmsi(mmsi))
+    
+    return sorted(list(validated))
 
 
 def _default_coordinates(hass: HomeAssistant, defaults: dict[str, Any]) -> tuple[float, float]:
@@ -236,6 +287,10 @@ def _options_schema(defaults: dict[str, Any]) -> vol.Schema:
                     CONF_VESSEL_LOG_RETENTION_DAYS, DEFAULT_VESSEL_LOG_RETENTION_DAYS
                 ),
             ): vol.All(int, vol.Range(min=0, max=365)),
+            vol.Optional(
+                CONF_WATCHLIST_MMSI,
+                default=defaults.get(CONF_WATCHLIST_MMSI, DEFAULT_WATCHLIST_MMSI),
+            ): vol.All(_validate_watchlist_mmsi),
         }
     )
 

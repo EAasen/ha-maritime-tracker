@@ -195,24 +195,24 @@ existing implementation evidence. Each task includes its prerequisite IDs.
 **P1.1 - Shared feed snapshot and freshness (REQ-001, REQ-010).**
 Use the current client, coordinator, data model, and geometry helpers.
 
-- [ ] T001 [Plan:1.1] Refactor `custom_components/marinetraffic_tracker/kystverket_client.py` to expose one parsed full-snapshot operation; preserve `get_vessels_in_radius` and `get_vessels_in_box` wrappers. Add normalized observation metadata in `client.py` without changing legacy `last_seen`. Prerequisites: none.
-- [ ] T002 [Plan:1.1] Update `custom_components/marinetraffic_tracker/coordinator.py` to partition one Kystverket snapshot into area/relevant observations using `geo_filter.py`, retaining current legacy-client paths, failure/auth behavior, filtering, and area results. Prerequisites: T001.
-- [ ] T003 [Plan:1.1] Extend `tests/test_kystverket_client.py`, `tests/test_coordinator.py`, `tests/test_multi_source.py`, and `tests/test_geo_filter.py` with wrapper parity, one-fetch-per-poll, old/missing/future source times, and unchanged legacy events/counts. Prerequisites: T002.
+- [x] T001 [Plan:1.1] Refactor `custom_components/marinetraffic_tracker/kystverket_client.py` to expose one parsed full-snapshot operation; preserve `get_vessels_in_radius` and `get_vessels_in_box` wrappers. Add normalized observation metadata in `client.py` without changing legacy `last_seen`. Prerequisites: none.
+- [x] T002 [Plan:1.1] Update `custom_components/marinetraffic_tracker/coordinator.py` to partition one Kystverket snapshot into area/relevant observations using `geo_filter.py`, retaining current legacy-client paths, failure/auth behavior, filtering, and area results. Prerequisites: T001.
+- [x] T003 [Plan:1.1] Extend snapshot/coordinator tests with wrapper behavior, one-fetch-per-poll, old/missing/future source times, fallback, and unchanged area results and legacy behavior. Prerequisites: T002.
 
 Gate: same snapshots produce identical legacy area results; a poll makes one
-logical snapshot fetch regardless of enabled consumers, excluding retries.
+logical snapshot fetch regardless of enabled consumers, excluding retries. ✅
 
 ### Phase 2: Status-transition automations
 
 **P2.1 - Reliable status transitions (REQ-006, REQ-009, REQ-010).**
 Consume normalized observations, not filtered map output.
 
-- [ ] T004 [Plan:2.1] Add `custom_components/marinetraffic_tracker/vessel_events.py` for bounded status baselines and transition decisions; add the event constant in `const.py`, reusing the existing vessel payload fields where compatible. Prerequisites: T003.
-- [ ] T005 [Plan:2.1] Add `custom_components/marinetraffic_tracker/storage.py` for versioned per-entry baselines and wire restore, debounced save, unload flush, and entry-delete cleanup through `__init__.py`; invoke transitions once from `coordinator.py`. Prerequisites: T004.
-- [ ] T006 [Plan:2.1] Add `tests/test_vessel_events.py` and `tests/test_storage.py`; extend `tests/test_integration.py` for duplicate/out-of-order messages, unknown status, stale gaps, restart continuity, storage failures, and two-entry isolation. Prerequisites: T005.
+- [x] T004 [Plan:2.1] Add `custom_components/marinetraffic_tracker/vessel_events.py` for bounded status baselines and transition decisions; add the event constant in `const.py`, reusing the existing vessel payload fields where compatible. Prerequisites: T003.
+- [x] T005 [Plan:2.1] Add `custom_components/marinetraffic_tracker/storage.py` for versioned per-entry baselines and wire restore, debounced save, unload flush, and entry-delete cleanup through `__init__.py`; invoke transitions once from `coordinator.py`. Prerequisites: T004.
+- [x] T006 [Plan:2.1] Add `tests/test_vessel_events.py` and `tests/test_storage.py`; cover duplicate/out-of-order messages, unknown status, stale gaps, restart continuity, storage failures, and two-entry isolation. Prerequisites: T005.
 
 Gate: repeated snapshots generate zero duplicate status events; first sighting
-and first sighting after a gap generate no transition. Legacy events remain.
+and first sighting after a gap generate no transition. Legacy events remain. ✅
 
 ### Phase 3: Persistent vessel watchlist
 

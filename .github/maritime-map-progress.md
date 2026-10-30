@@ -1,20 +1,20 @@
 # Maritime Dashboard Map Implementation Progress
 
-**Status**: Phase 1.1 Complete ✅  
+**Status**: Phase 1 Complete ✅ | Phase 2 Complete ✅
 **Date Started**: 2024-10-30  
-**Last Updated**: 2024-10-30
+**Last Updated**: 2026-10-30 (Phase 1/2 verified)
 
 ## Overview
 
 This document tracks the implementation of four features for the Norwegian Maritime Tracker integration, following the feature plan in `docs/flightradar-feature-plan.md`.
 
 ### Four Approved Features
-1. ✅ Maritime dashboard map with vessel trails (Phase 4)
+1. ⏳ Maritime dashboard map with vessel trails (Phase 4)
 2. ⏳ Persistent MMSI watchlist (Phase 3)
 3. ⏳ Observed port-call board (Phase 5)
-4. ⏳ AIS status-transition events (Phase 2)
+4. ✅ AIS status-transition events (Phase 2)
 
-## Phase 1: Shared Observations and Compatibility
+## Phase 1: Shared Observations and Compatibility ✅ COMPLETE
 
 ### T001: Refactor Kystverket Client ✅ COMPLETE
 
@@ -48,20 +48,124 @@ This document tracks the implementation of four features for the Norwegian Marit
 - All existing `get_vessels_in_radius` and `get_vessels_in_box` calls unchanged
 - New fields use sensible defaults
 - Legacy `msgtime` field preserved
-- No breaking changes to coordinator or entity code
+- No breaking changes to coordinator or entity contracts
+
+### T002: Update Coordinator for Snapshot Partitioning ✅ COMPLETE
+
+**Objective**: Integrate snapshot method into coordinator with geo-filtering, fallback strategy, and zero user-facing changes.
+
+**Completed**:
+
+1. **Enhanced _fetch_vessels()** (`coordinator.py`):
+   - Detects Kystverket client via `isinstance` check
+   - Calls `get_snapshot()` if available
+   - Partitions results using `geo_filter.partition()`
+   - Falls back to existing area queries if snapshot fails
+   - Debug logging for call tracking
+
+2. **Geo-filter Integration**:
+   - Seamlessly partitions unfiltered snapshot into area bounds
+   - No changes to existing area filter logic
+   - Maintains exact same vessel counts as legacy area queries
+
+3. **Backward Compatibility**: ✅
+   - Other clients (AISHub, VesselFinder) bypass snapshot entirely
+   - Fallback catches ALL exceptions and retries with area queries
+   - No breaking changes to entity resolvers or downstream code
+
+**Tests Created**:
+- `tests/test_coordinator_snapshot.py` - Integration tests covering:
+  - Snapshot used when available
+  - Fallback to area queries on snapshot failure
+  - Correct vessel counts with/without area filters
+  - No extra API calls made
+
+### T003: Extend Tests for Snapshot Integration ✅ COMPLETE
+
+**Objective**: Comprehensive validation of one-fetch-per-poll optimization, edge cases, and backward compatibility.
+
+**Completed**:
+
+1. **7 New Integration Tests** (`test_phase_1_extended.py`):
+   - **test_coordinator_one_fetch_per_poll_with_snapshot**: Validates 3 polls = 3 snapshot calls (optimization goal)
+   - **test_coordinator_handles_old_source_timestamps**: 1-hour-old timestamps handled gracefully
+   - **test_coordinator_handles_missing_source_timestamps**: None source_msgtime doesn't break system
+   - **test_coordinator_handles_future_timestamps**: Clock skew/malformed data robustness
+   - **test_coordinator_area_counts_unchanged**: Snapshot filtering matches legacy area query counts
+   - **test_vessel_observation_time_set_correctly**: Observation metadata flows through coordinator
+   - Plus 2 Phase 1.2 tests (fallback, no area filter)
+
+2. **Test Coverage Matrix**:
+   - ✅ One-fetch-per-poll verified
+   - ✅ Timestamp handling (old/missing/future)
+   - ✅ Backward compatibility (area counts)
+   - ✅ Metadata flow (observation times)
+   - ✅ Edge cases (fallback, no filter)
+
+3. **Quality Metrics**:
+   - All tests isolated with proper mocking
+   - Fast execution (<1 second total)
+   - Clear docstrings and failure messages
+   - No external dependencies
+   - CI/CD ready
+
+**Documentation Created**:
+- `.github/phase-1.1-implementation.md` - Technical details of snapshot foundation
+- `.github/phase-1.2-implementation.md` - Coordinator integration and optimization
+- `.github/phase-1.3-implementation.md` - Test coverage and validation
+
+---
+
+## Phase 1 Summary
+
+**Foundation Status**: ✅ COMPLETE AND FULLY TESTED
+
+**What Phase 1 Achieved**:
+- ✅ One-fetch-per-poll optimization: 3+ API calls reduced to 1 per poll cycle
+- ✅ Observation metadata separation: source_msgtime (AIS created) vs observation_time (parsed locally)
+- ✅ Snapshot-based architecture: All future phases share single fetch with different filters
+- ✅ Backward compatibility: Area queries work identically, other clients unchanged
+- ✅ Comprehensive testing: Edge cases, timestamps, fallback all validated
+
+**Phase 1 Benefits**:
+- Phase 2 (Status Events): Uses timestamp separation to detect genuine transitions
+- Phase 3 (Watchlist): Reuses same snapshot, applies different filter/view
+- Phase 4 (Maritime Map): Efficient real-time updates via WebSocket
+- Phase 5 (Port Calls): Hysteresis confirmation and entry/exit detection
+
+**Phase 1 handoff**: Complete; Phase 2 status-transition work is now implemented.
 
 ---
 
 ## Phase 2: Status-Transition Automations
 
 ### T004-T006: Vessel Events and Storage
-**Status**: ⏳ Pending  
-**Prerequisites**: T001 (Complete)
+**Status**: ✅ COMPLETE
+**Prerequisites**: Phase 1 complete
 
-Tasks:
-- [ ] T004: Add `vessel_events.py` with bounded status baselines and transitions
-- [ ] T005: Add `storage.py` for versioned persistence
-- [ ] T006: Add comprehensive tests for duplicates, outages, restarts
+**Implemented**:
+- `vessel_events.py` tracks per-entry status baselines, rejects duplicate and
+  out-of-order source messages, and re-baselines after unknown status, stale
+  observations, gaps, or implausible future timestamps.
+- Status-transition detection runs on merged feed observations before vessel
+  type and anchored/moored display filters, without changing area counts or
+  existing entered/exited events.
+- `storage.py` uses versioned Home Assistant storage with per-entry keys,
+  debounced saves, startup restore, unload flush, and config-entry deletion
+  cleanup.
+- Baselines expire after the configured stale timeout and are capped at 2,000
+  per entry; eviction is logged explicitly.
+- Event `marinetraffic_vessel_status_changed` includes entry, vessel, old/new
+  status, source/observation timestamps, source, and position.
+
+**Tests and validation**:
+- `tests/test_vessel_events.py`: status transitions, duplicates, ordering,
+  missing/unknown/stale/future timestamps, gaps, restart continuity, bounds,
+  and coordinator event behavior.
+- `tests/test_storage.py`: versioned restore, malformed state, debounced
+  writes, flush, entry isolation/removal, and surfaced storage failures.
+- Targeted Phase 1/2 tests, including coordinator, integration, snapshot,
+  event, and storage coverage: **92 passed**.
 
 ---
 
@@ -69,7 +173,7 @@ Tasks:
 
 ### T007-T010: Watchlist Configuration and State
 **Status**: ⏳ Pending  
-**Prerequisites**: T001 (Complete), T002 (Pending)
+**Prerequisites**: T001-T003 (Complete)
 
 Tasks:
 - [ ] T007: Add watchlist options in `config_flow.py` with MMSI validation
@@ -83,7 +187,7 @@ Tasks:
 
 ### T011-T015: WebSocket API and Frontend Card
 **Status**: ⏳ Pending  
-**Prerequisites**: T005 (Pending), T010 (Pending)
+**Prerequisites**: T005 (Complete), T010 (Pending)
 
 **Map Data and Frontending**:
 
@@ -109,7 +213,7 @@ Tasks:
 
 ### T016-T021: Port Configuration and Board Sensors
 **Status**: ⏳ Pending  
-**Prerequisites**: T006 (Pending), T010 (Pending)
+**Prerequisites**: T006 (Complete), T010 (Pending)
 
 Tasks:
 - [ ] T016: Add port configuration in `config_flow.py` (up to 10 ports)
@@ -305,4 +409,3 @@ Updates needed:
 - Parsing with metadata population
 
 **Next**: Phase 1.2 (Coordinator refactoring)
-

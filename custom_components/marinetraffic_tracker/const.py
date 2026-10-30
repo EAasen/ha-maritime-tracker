@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 DOMAIN = "marinetraffic_tracker"
+EVENT_VESSEL_STATUS_CHANGED = f"{DOMAIN}_vessel_status_changed"
 
 # ---------------------------------------------------------------------------
 # Vessel photo URL helper
@@ -103,6 +104,7 @@ CONF_CREATE_AREA_ZONE = "create_area_zone"
 CONF_VESSEL_LOG = "vessel_log"
 CONF_VESSEL_LOG_FORMAT = "vessel_log_format"
 CONF_VESSEL_LOG_RETENTION_DAYS = "vessel_log_retention_days"
+CONF_WATCHLIST_MMSI = "watchlist_mmsi"
 
 # ---------------------------------------------------------------------------
 # Vessel observation log files
@@ -139,6 +141,7 @@ DEFAULT_CREATE_AREA_ZONE = True  # draw the tracked area on the HA map
 DEFAULT_VESSEL_LOG = False  # opt-in: a busy area writes tens of thousands of rows a day
 DEFAULT_VESSEL_LOG_FORMAT = VESSEL_LOG_FORMAT_CSV
 DEFAULT_VESSEL_LOG_RETENTION_DAYS = 7
+DEFAULT_WATCHLIST_MMSI: list[str] = []  # empty = no watchlist
 
 # ---------------------------------------------------------------------------
 # Safety limits — anti-ban rate limiting compliance
@@ -148,6 +151,12 @@ DEFAULT_VESSEL_LOG_RETENTION_DAYS = 7
 # ---------------------------------------------------------------------------
 MIN_UPDATE_INTERVAL = 30  # seconds — hard floor for scraper-based sources
 MIN_UPDATE_INTERVAL_API = 5  # seconds — hard floor for API-based sources (AISHub)
+
+# ---------------------------------------------------------------------------
+# Watchlist limits
+# ---------------------------------------------------------------------------
+MAX_WATCHLIST_MMSI = 100  # maximum MMSIs in the persistent watchlist
+MMSI_LENGTH = 9  # MMSI is exactly 9 digits
 
 # ---------------------------------------------------------------------------
 # Data source configuration

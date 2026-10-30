@@ -14,6 +14,7 @@ Official Kystverket AIS maritime tracker for Home Assistant. Real-time vessel tr
 
 | Guide | Description |
 |---|---|
+| [Version history](CHANGELOG.md) | Implemented and released changes |
 | [Installation](docs/installation.md) | HACS and manual installation steps |
 | [Configuration](docs/configuration.md) | BarentsWatch credentials, config flow walkthrough, all options |
 | [Usage](docs/usage.md) | Entities, automations, and Lovelace card examples |

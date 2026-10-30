@@ -28,6 +28,7 @@ from .const import (
 from .coordinator import MarineTrafficCoordinator, VesselClient
 from .geo_filter import area_centre_and_radius
 from .kystverket_client import KystverketClient
+from .storage import VesselEventStorage
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -133,6 +134,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _check_ha_version()
     client = _build_client(hass, entry)
     coordinator = MarineTrafficCoordinator(hass, entry, client)
+    await coordinator.async_load_status_baselines()
 
     # Perform the first refresh so entities are available immediately.
     # If the initial fetch fails, the setup is aborted and HA will retry.
@@ -153,9 +155,16 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry and clean up resources."""
     unloaded = bool(await hass.config_entries.async_unload_platforms(entry, PLATFORMS))
     if unloaded:
+        coordinator: MarineTrafficCoordinator = hass.data[DOMAIN][entry.entry_id]
+        await coordinator.async_shutdown()
         _async_remove_area_zone(hass, entry)
         hass.data[DOMAIN].pop(entry.entry_id)
     return unloaded
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Remove persisted status state when a config entry is deleted."""
+    await VesselEventStorage.async_remove_entry(hass, entry.entry_id)
 
 
 async def _async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:

@@ -8,11 +8,12 @@ Kystverket API responses.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from homeassistant.core import HomeAssistant
 import pytest
+from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.marinetraffic_tracker.client import VesselData
@@ -34,6 +35,7 @@ from custom_components.marinetraffic_tracker.const import (
     DATA_SOURCE_KYSTVERKET,
     DEFAULT_STALE_TIMEOUT,
     DOMAIN,
+    EVENT_VESSEL_STATUS_CHANGED,
     TRACKING_MODE_BOX,
     TRACKING_MODE_RADIUS,
 )
@@ -193,6 +195,46 @@ async def test_integration_unloads_cleanly(hass: HomeAssistant) -> None:
     await hass.async_block_till_done()
 
     assert entry.entry_id not in hass.data.get(DOMAIN, {})
+
+
+async def test_status_baseline_survives_entry_unload_and_reload(hass: HomeAssistant) -> None:
+    """A persisted baseline must allow a real transition after the entry reloads."""
+    entry = _make_entry()
+    first_client = _make_mock_client(vessels=[_VESSEL_A])
+    await _setup_integration(hass, entry, first_client)
+
+    await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+    changed_vessel = replace(
+        _VESSEL_A,
+        status="Moored",
+        observation_time=datetime.now(UTC),
+    )
+    second_client = _make_mock_client(vessels=[changed_vessel])
+    received: list[dict] = []
+    unsubscribe = hass.bus.async_listen(
+        EVENT_VESSEL_STATUS_CHANGED,
+        lambda event: received.append(event.data),
+    )
+    with (
+        patch(
+            "custom_components.marinetraffic_tracker._build_client",
+            return_value=second_client,
+        ),
+        patch("custom_components.marinetraffic_tracker.coordinator.asyncio.sleep"),
+    ):
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+    unsubscribe()
+
+    assert len(received) == 1
+    assert received[0]["old_status"] == _VESSEL_A.status
+    assert received[0]["new_status"] == "Moored"
+    assert received[0]["entry_id"] == entry.entry_id
+
+    await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
 
 
 async def test_integration_creates_coordinator(hass: HomeAssistant) -> None:

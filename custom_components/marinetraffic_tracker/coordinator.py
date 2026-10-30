@@ -18,11 +18,11 @@ The coordinator owns the vessel state dictionary and is responsible for:
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass, field, replace
-from datetime import UTC, datetime, timedelta
 import logging
 import math
 import random
+from dataclasses import dataclass, field, replace
+from datetime import UTC, datetime, timedelta
 from typing import Any, NoReturn
 
 from homeassistant.config_entries import ConfigEntry
@@ -66,11 +66,14 @@ from .const import (
     DEFAULT_VESSEL_LOG_FORMAT,
     DEFAULT_VESSEL_LOG_RETENTION_DAYS,
     DOMAIN,
+    EVENT_VESSEL_STATUS_CHANGED,
     MIN_UPDATE_INTERVAL,
     MIN_UPDATE_INTERVAL_API,
     TRACKING_MODE_RADIUS,
 )
 from .kystverket_client import KystverketAuthError, KystverketClient
+from .storage import VesselEventStorage
+from .vessel_events import VesselEventTracker
 from .vessel_log import VesselLogWriter, build_writer
 from .vesselfinder_client import VesselFinderClient
 
@@ -263,6 +266,16 @@ class MarineTrafficCoordinator(DataUpdateCoordinator[dict[str, VesselData]]):
         if fallback_client is not None and fallback_client not in self._extra_clients:
             self._extra_clients.append(fallback_client)
         self._entry = entry
+        self._status_tracker = VesselEventTracker(
+            entry.entry_id,
+            stale_timeout=int(
+                entry.options.get(
+                    CONF_STALE_TIMEOUT,
+                    entry.data.get(CONF_STALE_TIMEOUT, DEFAULT_STALE_TIMEOUT),
+                )
+            ),
+        )
+        self._status_storage: VesselEventStorage | None = None
         # Running vessel registry — persists across updates.
         self._vessels: dict[str, VesselData] = {}
         # Anchored/moored vessel registry — used when exclusion options are
@@ -374,6 +387,19 @@ class MarineTrafficCoordinator(DataUpdateCoordinator[dict[str, VesselData]]):
         """
         return list(self._position_history.get(mmsi, []))
 
+    async def async_load_status_baselines(self) -> None:
+        """Restore persisted event baselines before the first coordinator poll."""
+        self._status_storage = VesselEventStorage(self.hass, self._entry.entry_id)
+        baselines = await self._status_storage.async_load()
+        changed = self._status_tracker.restore(baselines, datetime.now(UTC))
+        if changed:
+            self._status_storage.async_delay_save(self._status_tracker.baselines)
+
+    async def async_shutdown(self) -> None:
+        """Flush event state before unloading this config entry."""
+        if self._status_storage is not None:
+            await self._status_storage.async_flush(self._status_tracker.baselines)
+
     @property
     def statistics(self) -> AreaStatistics:
         """Return the current historical statistics for the tracked area."""
@@ -407,19 +433,21 @@ class MarineTrafficCoordinator(DataUpdateCoordinator[dict[str, VesselData]]):
 
         This helper isolates the try/except so that ``_async_update_data`` can
         cleanly fall through to the fallback client when the primary fails.
-        
+
         For Kystverket clients, attempts to use get_snapshot() if available,
         applying geographic filtering to get area-specific results. Falls back
         to direct area queries for other clients or if snapshot is unavailable.
         """
         try:
             # Phase 1.2: Try snapshot-based approach for Kystverket
-            if isinstance(client, KystverketClient) and hasattr(client, "get_snapshot"):
+            if isinstance(client, KystverketClient) and callable(
+                getattr(client, "get_snapshot", None)
+            ):
                 try:
                     snapshot = await client.get_snapshot()
                     # Filter snapshot to the configured area
                     from .geo_filter import build_geo_filter
-                    
+
                     geo_filter = build_geo_filter(config)
                     if geo_filter is not None:
                         area_vessels, _ = geo_filter.partition(snapshot)
@@ -444,7 +472,7 @@ class MarineTrafficCoordinator(DataUpdateCoordinator[dict[str, VesselData]]):
                         type(snapshot_exc).__name__,
                         detail,
                     )
-            
+
             # Standard area-based fetch (used by all clients as fallback)
             if tracking_mode == TRACKING_MODE_RADIUS:
                 return (
@@ -639,7 +667,21 @@ class MarineTrafficCoordinator(DataUpdateCoordinator[dict[str, VesselData]]):
                 if existing is None or vessel.last_seen > existing.last_seen:
                     merged[vessel.mmsi] = vessel
 
-        fresh: list[VesselData] = list(merged.values())
+        observations: list[VesselData] = list(merged.values())
+        now = datetime.now(UTC)
+        status_state_changed = self._status_tracker.prune(now)
+        for vessel in observations:
+            transition, changed = self._status_tracker.observe(vessel, now)
+            status_state_changed = status_state_changed or changed
+            if transition is not None:
+                self.hass.bus.async_fire(
+                    EVENT_VESSEL_STATUS_CHANGED,
+                    transition.as_event_data(self._entry.entry_id),
+                )
+        if status_state_changed and self._status_storage is not None:
+            self._status_storage.async_delay_save(self._status_tracker.baselines)
+
+        fresh = observations
 
         # Apply vessel type filter if configured.
         # Stored values may be strings (from the SelectSelector) or ints; normalise to int.
@@ -657,8 +699,6 @@ class MarineTrafficCoordinator(DataUpdateCoordinator[dict[str, VesselData]]):
 
         exclude_anchored: bool = bool(config.get(CONF_EXCLUDE_ANCHORED, DEFAULT_EXCLUDE_ANCHORED))
         exclude_moored: bool = bool(config.get(CONF_EXCLUDE_MOORED, DEFAULT_EXCLUDE_MOORED))
-
-        now = datetime.now(UTC)
 
         # Snapshot of MMSIs tracked before this update cycle (both registries).
         previous_mmsis: set[str] = set(self._vessels.keys()) | set(self._anchored_vessels.keys())
