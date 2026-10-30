@@ -20,7 +20,14 @@ custom_components/marinetraffic_tracker/
 ├── entity.py             # Shared base entity (MarineTrafficEntity)
 ├── sensor.py             # Sensor platform — count sensor + per-vessel sensors
 ├── device_tracker.py     # Device tracker platform — per-vessel trackers
+├── geo_location.py       # Geolocation platform — map markers
+├── vessel_events.py      # AIS status-change event tracking (Phase 2)
+├── storage.py            # Persisted state storage (Phase 2)
+├── websocket_api.py      # Real-time WebSocket transport (Phase 4)
 ├── strings.json          # UI string keys
+├── frontend/
+│   ├── __init__.py       # Frontend asset registration
+│   └── maritime-tracker-card.js  # Leaflet-based custom card (Phase 4)
 └── translations/
     └── en.json           # English translations for the UI strings
 ```
@@ -77,6 +84,41 @@ Makes authenticated OAuth2 requests to the BarentsWatch live AIS endpoint.  Hand
 
 - **`MarineTrafficVesselLocation`** — a transient map marker per vessel in the tracked area.  Carries no `unique_id`, so it is never persisted in the entity registry or recorder; entities are added and removed as vessels enter and leave.  Shown via a Map card's `geo_location_sources`.
 
+### `vessel_events.py` — Status Transitions (Phase 2)
+
+- **`VesselEventTracker`** — tracks baseline AIS status for each vessel and emits a `marinetraffic_tracker_vessel_status_changed` event exactly once per confirmed valid state transition.
+- Handles duplicate/out-of-order messages, unknown statuses, and stale gaps without fabricating events.
+
+### `storage.py` — Persisted State (Phase 2)
+
+- **`VesselEventStorage`** — versioned per-entry storage for status baselines and state recovery.
+- Manages restore on startup, debounced saves, unload flushing, and cleanup when a config entry is deleted.
+
+### `websocket_api.py` — Real-time Dashboard Transport (Phase 4)
+
+- **`async_register_websocket_api`** — registers WebSocket commands for the maritime tracker card.
+- **`BoundedSnapshot`** — paginated vessel snapshots with stale detection, watched-vessel marking, and bounded row limits.
+- **`TrailPoint`** — individual position history points.
+- Commands:
+  - `marinetraffic_tracker:subscribe` — live updates from coordinator (push).
+  - `marinetraffic_tracker:unsubscribe` — stop receiving updates.
+  - `marinetraffic_tracker:get_snapshot` — paginated vessel list on demand.
+  - `marinetraffic_tracker:get_trail` — vessel position history (bounded to MAX_TRAIL_POINTS).
+
+### `frontend/maritime-tracker-card.js` — Custom Lovelace Card (Phase 4)
+
+A Leaflet-based custom card providing:
+- **Real-time map** with vessel markers updated via WebSocket.
+- **Vessel selection** to display details pane with MMSI, status, speed, destination, ETA.
+- **Position trails** (polylines) bounded to recent history.
+- **Heading indicators** (lines) showing vessel course/heading.
+- **Area outline** (circle or rectangle) from coordinator geometry.
+- **Watched vessel highlighting** (distinct color).
+- **Stale detection** (grayed-out vessels).
+- **Map controls** — fit all vessels, reset to default view.
+- **Responsive layout** — side panels on desktop, stacked on mobile.
+- **Port board** (optional) — shows confirmed arrivals/departures when ports are configured.
+
 ### `config_flow.py` — UI Configuration
 
 A multi-step `ConfigFlow` for initial setup and an `OptionsFlow` for changing settings after setup.  Steps:
@@ -101,18 +143,37 @@ MarineTrafficCoordinator._async_update_data()
   ├─ merge new VesselData into self.vessels dict
   ├─ evict stale vessels
   ├─ update position history per vessel
+  ├─ check for status transitions (vessel_events.py)
+  │  └─ emit marinetraffic_tracker_vessel_status_changed events
   └─ update statistics
       │  coordinator notifies listeners
       ▼
-┌─────────────────────────────────┐
-│  MarineTrafficCountSensor       │ ← reads len(coordinator.vessels)
-│  MarineTrafficVesselSensor (×N) │ ← reads coordinator.vessels[mmsi]
-│  MarineTrafficVesselTracker (×N)│ ← reads coordinator.vessels[mmsi]
-│  MarineTrafficStatisticsSensor  │ ← reads coordinator.statistics
-└─────────────────────────────────┘
+┌───────────────────────────────────────┐
+│ Entity Layer                          │
+├───────────────────────────────────────┤
+│  MarineTrafficCountSensor             │ ← reads len(coordinator.vessels)
+│  MarineTrafficVesselSensor (×N)       │ ← reads coordinator.vessels[mmsi]
+│  MarineTrafficVesselTracker (×N)      │ ← reads coordinator.vessels[mmsi]
+│  MarineTrafficVesselLocation (×N)     │ ← reads coordinator.vessels[mmsi]
+│  MarineTrafficStatisticsSensor        │ ← reads coordinator.statistics
+└───────────────────────────────────────┘
       │
-      ▼
-Home Assistant state machine → Lovelace / Automations
+      ├─→ Home Assistant state machine
+      │     ↓
+      │   Lovelace Entities / Automations
+      │
+      └─→ WebSocket API (Phase 4)
+            │
+            ▼
+    ┌───────────────────────┐
+    │ Maritime Tracker Card │
+    ├───────────────────────┤
+    │ • Live vessel markers │
+    │ • Position trails     │
+    │ • Area outline        │
+    │ • Details panel       │
+    │ • Port board          │
+    └───────────────────────┘
 ```
 
 ---

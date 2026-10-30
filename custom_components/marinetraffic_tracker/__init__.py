@@ -29,6 +29,7 @@ from .coordinator import MarineTrafficCoordinator, VesselClient
 from .geo_filter import area_centre_and_radius
 from .kystverket_client import KystverketClient
 from .storage import VesselEventStorage
+from .websocket_api import async_register_websocket_api
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -142,6 +143,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
     _async_create_area_zone(hass, entry)
+
+    # Register WebSocket API once per entry (commands are global but scoped by entry_id).
+    if entry.entry_id == list(hass.data.get(DOMAIN, {}).keys())[0]:
+        await async_register_websocket_api(hass)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 

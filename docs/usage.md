@@ -79,7 +79,9 @@ Every vessel inside the tracked area is also published as a transient `geo_locat
 
 ---
 
-## Map Card
+## Map Cards
+
+### Built-in Home Assistant Map Card
 
 Every vessel in the tracked area is published as a `geo_location` entity, so a single card shows them all — no entity needs to be enabled first:
 
@@ -91,13 +93,13 @@ geo_location_sources:
 
 Markers appear and disappear on their own as vessels enter and leave the area.
 
-### Tracked area zone
+#### Tracked area zone
 
 The integration also draws the tracked area on the map as a zone named after the config entry.  Box-mode areas are approximated by the smallest circle that contains the rectangle, because Home Assistant zones are always circular.
 
 The zone is *not* passive, since the Map card only draws active zones.  A side effect is that a person inside the area and outside every smaller zone will report this zone as their location.  If that is unwanted, turn off **Show Tracked Area on Map** in the integration options.
 
-### Pinning specific vessels
+#### Pinning specific vessels
 
 To keep a chosen vessel on the map with full history, enable its device-tracker entity and list it explicitly:
 
@@ -108,6 +110,53 @@ entities:
 geo_location_sources:
   - marinetraffic_tracker
 ```
+
+### Maritime Tracker Custom Card
+
+A dedicated custom card provides real-time map updates, vessel trails, heading indicators, and port board information through a WebSocket connection.
+
+> **Phase 4 feature:** Available when the maritime tracker card custom component is enabled.
+
+#### Add the card
+
+```yaml
+type: maritime-tracker-card
+entity: sensor.my_area_vessel_count  # or any entity from the tracked area entry
+zoom: 8
+show_port_board: true
+```
+
+#### Features
+
+| Feature | Description |
+|---|---|
+| **Live updates** | Vessel markers update in real-time without page reload |
+| **Vessel trails** | Click a vessel to display its recent position history as a polyline |
+| **Heading indicators** | Arrows show vessel heading/course when available |
+| **Area outline** | Actual area geometry (circle or rectangle) drawn on the map |
+| **Details pane** | Click a vessel to see MMSI, speed, destination, ETA, and status |
+| **Watched vessels** | Vessels on your persistent watchlist appear with distinct styling |
+| **Stale detection** | Vessels not heard from recently are grayed out |
+| **Fit & Reset** | Buttons to zoom to all vessels or reset to default view |
+| **Port board** | Optional panel showing confirmed arrivals/departures (when configured) |
+| **Mobile friendly** | Responsive layout; panels stack on small screens |
+
+#### Configuration
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `entity` | string | — | Entity ID from the maritime tracker entry (required) |
+| `zoom` | integer | 8 | Initial map zoom level (1–19) |
+| `show_port_board` | boolean | true | Show port board panel (when ports are configured) |
+
+#### Map interactions
+
+- **Pan:** Click and drag to move the map
+- **Zoom:** Scroll wheel or pinch to zoom in/out
+- **Select vessel:** Click a marker to show details and load trail
+- **Deselect:** Click the × in the details panel or click elsewhere
+- **Fit map:** Click "Fit Map" to zoom to all visible vessels
+- **Reset view:** Click "Reset" to return to default zoom/center
 
 ---
 
