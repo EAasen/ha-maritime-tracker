@@ -100,25 +100,21 @@ async def async_register_websocket_api(hass: HomeAssistant) -> None:
         hass,
         WS_TYPE_SUBSCRIBE,
         _async_handle_subscribe,
-        allow_user_context=False,
     )
     websocket_api.async_register_command(
         hass,
         WS_TYPE_UNSUBSCRIBE,
         _async_handle_unsubscribe,
-        allow_user_context=False,
     )
     websocket_api.async_register_command(
         hass,
         WS_TYPE_GET_SNAPSHOT,
         _async_handle_get_snapshot,
-        allow_user_context=False,
     )
     websocket_api.async_register_command(
         hass,
         WS_TYPE_GET_TRAIL,
         _async_handle_get_trail,
-        allow_user_context=False,
     )
 
 
