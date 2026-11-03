@@ -309,7 +309,6 @@ def _radius_schema(hass: HomeAssistant, defaults: dict[str, Any]) -> vol.Schema:
                 ),
             ),
         },
-        extra=vol.PREVENT_EXTRA,
     )
 
 
