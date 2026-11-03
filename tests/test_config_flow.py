@@ -458,6 +458,85 @@ def test_watchlist_mmsi_rejects_invalid_length() -> None:
         _validate_watchlist_mmsi(["1234567890"])  # 10 digits
 
 
+@pytest.mark.asyncio
+async def test_radius_step_rejects_missing_location() -> None:
+    """Radius step should reject submission without a location."""
+    flow = _make_config_flow()
+    result = await flow.async_step_radius({})
+
+    assert result["type"] == "form"
+    assert result["step_id"] == "radius"
+    assert result["errors"]["base"] == "location_required"
+
+
+@pytest.mark.asyncio
+async def test_radius_step_rejects_location_outside_norway() -> None:
+    """Radius step should reject locations outside Norwegian bounds."""
+    flow = _make_config_flow()
+    # Sweden coordinates
+    result = await flow.async_step_radius(
+        {_CONF_LOCATION: {"latitude": 59.3, "longitude": 18.0, "radius": 5000.0}}
+    )
+
+    assert result["type"] == "form"
+    assert result["step_id"] == "radius"
+    assert result["errors"]["base"] == "location_outside_norway"
+
+
+@pytest.mark.asyncio
+async def test_radius_step_rejects_invalid_location_format() -> None:
+    """Radius step should reject non-dict location data."""
+    flow = _make_config_flow()
+    result = await flow.async_step_radius({_CONF_LOCATION: "invalid"})
+
+    assert result["type"] == "form"
+    assert result["step_id"] == "radius"
+    assert result["errors"]["base"] == "invalid_location_format"
+
+
+@pytest.mark.asyncio
+async def test_radius_step_rejects_missing_coordinates() -> None:
+    """Radius step should reject location without lat/lon."""
+    flow = _make_config_flow()
+    result = await flow.async_step_radius({_CONF_LOCATION: {"radius": 5000.0}})
+
+    assert result["type"] == "form"
+    assert result["step_id"] == "radius"
+    assert result["errors"]["base"] == "location_missing_coordinates"
+
+
+@pytest.mark.asyncio
+async def test_radius_step_accepts_valid_location_with_radius() -> None:
+    """Radius step should accept valid location with radius."""
+    flow = _make_config_flow()
+    result = await flow.async_step_radius(
+        {_CONF_LOCATION: {"latitude": 60.4, "longitude": 5.3, "radius": 15000.0}}
+    )
+
+    assert result["type"] == "form"
+    assert result["step_id"] == "options"
+    assert flow._data[CONF_LATITUDE] == 60.4
+    assert flow._data[CONF_LONGITUDE] == 5.3
+    assert flow._data[CONF_RADIUS_KM] == 15.0
+
+
+@pytest.mark.asyncio
+async def test_radius_step_uses_default_radius_when_missing() -> None:
+    """Radius step should use default radius if not provided."""
+    from custom_components.marinetraffic_tracker.const import DEFAULT_RADIUS_KM
+
+    flow = _make_config_flow()
+    result = await flow.async_step_radius(
+        {_CONF_LOCATION: {"latitude": 60.4, "longitude": 5.3}}
+    )
+
+    assert result["type"] == "form"
+    assert result["step_id"] == "options"
+    assert flow._data[CONF_LATITUDE] == 60.4
+    assert flow._data[CONF_LONGITUDE] == 5.3
+    assert flow._data[CONF_RADIUS_KM] == DEFAULT_RADIUS_KM
+
+
 def test_watchlist_mmsi_rejects_non_digit_characters() -> None:
     """MMSIs with non-digit characters should be rejected."""
     from custom_components.marinetraffic_tracker.config_flow import _validate_watchlist_mmsi
