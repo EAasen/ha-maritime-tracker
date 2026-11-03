@@ -12,7 +12,14 @@ Official Kystverket AIS maritime tracker for Home Assistant. Real-time vessel tr
 
 ---
 
-> **⚠️ v1.2.2 Activation Issue?** If you see `TypeError: async_register_command() got an unexpected keyword argument 'allow_user_context'`, see the [v1.2.2 Quick Fix Guide](README_v1.2.2_FIX.md) for a 5-minute solution. This is due to stale Python cache in your Home Assistant installation — a clean reinstall resolves it.
+## 📢 Latest Release: v1.2.3
+**Location Validation Improvements** - Enhanced error messages and validation logic for better user experience during setup.
+- ✅ Clear, specific error messages when selecting location
+- ✅ Better guidance for configuration
+- ✅ Comprehensive test coverage
+- See [v1.2.3 Release Notes](RELEASE_v1.2.3_COMPLETE.md) for details.
+
+> **⚠️ v1.2.2 Activation Issue?** If you see `TypeError: async_register_command() got an unexpected keyword argument 'allow_user_context'`, see the [v1.2.2 Quick Fix Guide](README_v1.2.2_FIX.md) for a 5-minute solution. This is due to stale Python cache in your Home Assistant installation — a clean reinstall resolves it. **Resolved in v1.2.3.**
 
 ---
 
