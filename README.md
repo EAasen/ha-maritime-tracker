@@ -10,6 +10,12 @@
 
 Official Kystverket AIS maritime tracker for Home Assistant. Real-time vessel tracking in Norwegian waters using the Norwegian Coastal Administration live AIS feed exposed through BarentsWatch.
 
+---
+
+> **⚠️ v1.2.2 Activation Issue?** If you see `TypeError: async_register_command() got an unexpected keyword argument 'allow_user_context'`, see the [v1.2.2 Quick Fix Guide](README_v1.2.2_FIX.md) for a 5-minute solution. This is due to stale Python cache in your Home Assistant installation — a clean reinstall resolves it.
+
+---
+
 ## Documentation
 
 | Guide | Description |

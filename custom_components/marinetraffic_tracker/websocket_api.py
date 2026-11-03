@@ -16,6 +16,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
+from homeassistant.components import websocket_api
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.json import JSONEncoder
 
@@ -95,25 +96,25 @@ class BoundedSnapshot:
 
 async def async_register_websocket_api(hass: HomeAssistant) -> None:
     """Register the maritime tracker WebSocket API commands."""
-    hass.components.websocket_api.async_register_command(
+    websocket_api.async_register_command(
+        hass,
         WS_TYPE_SUBSCRIBE,
         _async_handle_subscribe,
-        allow_user_context=False,
     )
-    hass.components.websocket_api.async_register_command(
+    websocket_api.async_register_command(
+        hass,
         WS_TYPE_UNSUBSCRIBE,
         _async_handle_unsubscribe,
-        allow_user_context=False,
     )
-    hass.components.websocket_api.async_register_command(
+    websocket_api.async_register_command(
+        hass,
         WS_TYPE_GET_SNAPSHOT,
         _async_handle_get_snapshot,
-        allow_user_context=False,
     )
-    hass.components.websocket_api.async_register_command(
+    websocket_api.async_register_command(
+        hass,
         WS_TYPE_GET_TRAIL,
         _async_handle_get_trail,
-        allow_user_context=False,
     )
 
 

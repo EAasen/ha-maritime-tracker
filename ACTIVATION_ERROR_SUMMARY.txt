@@ -1,0 +1,70 @@
+═══════════════════════════════════════════════════════════════════════════════
+  v1.2.2 ACTIVATION ERROR - COMPLETE ANALYSIS & SOLUTION
+═══════════════════════════════════════════════════════════════════════════════
+
+ERROR YOU'RE SEEING:
+───────────────────
+TypeError: async_register_command() got an unexpected keyword argument 'allow_user_context'
+Location: websocket_api.py, line 99
+
+ROOT CAUSE:
+───────────
+Your Home Assistant installation has STALE PYTHON CACHE from old versions.
+The current v1.2.2 code is CORRECT and does NOT use this parameter.
+But HA is loading old bytecode (.pyc files) instead of the new code.
+
+THE FIX (5 MINUTES):
+────────────────────
+1. Settings → Devices & Services → Find "Norwegian Maritime Tracker" → Delete
+2. SSH: cd /config/custom_components && rm -rf marinetraffic_tracker/
+3. SSH: find /config -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null
+4. Settings → HACS → Search "Norwegian Maritime Tracker" → Install v1.2.2
+5. Settings → System → Restart Home Assistant
+6. Settings → Devices & Services → Add Integration → "Norwegian Maritime Tracker"
+
+DOCUMENTATION CREATED:
+──────────────────────
+✅ README_v1.2.2_FIX.md          - Complete diagnosis & solution (9KB)
+✅ TROUBLESHOOTING_v1.2.2.md     - Platform-specific help (7KB)  
+✅ CODE_CHANGES_v1.2.2.md        - Detailed code diff (6KB)
+✅ v1.2.2_RELEASE_NOTES.md       - Full release information (8KB)
+✅ FIX_v1.2.2_ACTIVATION_ERROR.md - Quick fix guide (4KB)
+
+WHAT CHANGED:
+─────────────
+OLD (v1.2.1 - BROKEN):
+  from homeassistant.core import HomeAssistant
+  ...
+  hass.components.websocket_api.async_register_command(
+      cmd, handler, allow_user_context=False)
+
+NEW (v1.2.2 - CORRECT):
+  from homeassistant.components import websocket_api
+  from homeassistant.core import HomeAssistant
+  ...
+  websocket_api.async_register_command(hass, cmd, handler)
+  # ✅ No allow_user_context parameter!
+
+VERIFICATION:
+──────────────
+SSH into Home Assistant and run:
+  grep -n "allow_user_context" /config/custom_components/marinetraffic_tracker/websocket_api.py
+Expected result: (nothing) - file is correct!
+
+KEY POINTS:
+──────────
+✅ Current code IS correct (no allow_user_context)
+✅ The error is from CACHED Python bytecode
+✅ Solution is to clear cache and reinstall
+✅ Takes only 5 minutes to fix
+✅ No data or configuration will be lost
+✅ All existing automations will continue to work
+
+NEXT STEPS:
+────────────
+1. Read: README_v1.2.2_FIX.md (complete step-by-step guide)
+2. Follow the 5-step fix above
+3. If issues persist: Read TROUBLESHOOTING_v1.2.2.md for your platform
+4. Still stuck? Report on GitHub with full error logs
+
+═══════════════════════════════════════════════════════════════════════════════

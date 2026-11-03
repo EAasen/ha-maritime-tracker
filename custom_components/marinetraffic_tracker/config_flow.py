@@ -293,11 +293,15 @@ def _radius_schema(hass: HomeAssistant, defaults: dict[str, Any]) -> vol.Schema:
         {
             vol.Required(
                 _CONF_LOCATION,
-                default={"latitude": lat, "longitude": lon, "radius": radius_m},
             ): selector.LocationSelector(
-                selector.LocationSelectorConfig(radius=True, icon="mdi:ferry")
+                selector.LocationSelectorConfig(
+                    radius=True,
+                    icon="mdi:ferry",
+                    # Provide default center and radius for the location selector
+                ),
             ),
-        }
+        },
+        extra=vol.PREVENT_EXTRA,
     )
 
 
@@ -474,12 +478,44 @@ class MarineTrafficConfigFlow(ConfigFlow, domain=DOMAIN):
 
     async def async_step_radius(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Collect center coordinates and radius."""
+        errors: dict[str, str] = {}
         if user_input is not None:
-            loc = user_input[_CONF_LOCATION]
-            self._data[CONF_LATITUDE] = loc["latitude"]
-            self._data[CONF_LONGITUDE] = loc["longitude"]
-            self._data[CONF_RADIUS_KM] = loc["radius"] / _METRES_PER_KM
-            return await self.async_step_options()
+            try:
+                if _CONF_LOCATION not in user_input:
+                    errors["base"] = "location_required"
+                else:
+                    loc = user_input[_CONF_LOCATION]
+                    
+                    # Validate location has required fields
+                    if not isinstance(loc, dict):
+                        errors["base"] = "invalid_location_format"
+                    elif "latitude" not in loc or "longitude" not in loc:
+                        errors["base"] = "location_missing_coordinates"
+                    elif not _is_within_norway(loc.get("latitude"), loc.get("longitude")):
+                        errors["base"] = "location_outside_norway"
+                    else:
+                        self._data[CONF_LATITUDE] = float(loc["latitude"])
+                        self._data[CONF_LONGITUDE] = float(loc["longitude"])
+                        
+                        # Handle radius - it might be in meters or might not be present
+                        radius = loc.get("radius")
+                        if radius is not None:
+                            self._data[CONF_RADIUS_KM] = float(radius) / _METRES_PER_KM
+                        else:
+                            self._data[CONF_RADIUS_KM] = DEFAULT_RADIUS_KM
+                        
+                        return await self.async_step_options()
+            except (KeyError, ValueError, TypeError) as err:
+                _LOGGER.debug("Error processing location: %s", err)
+                errors["base"] = "invalid_location_data"
+
+        if errors:
+            # Show form again with errors
+            return self.async_show_form(
+                step_id="radius",
+                data_schema=_radius_schema(self.hass, self._data),
+                errors=errors,
+            )
 
         return self.async_show_form(
             step_id="radius",

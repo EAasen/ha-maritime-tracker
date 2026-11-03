@@ -89,7 +89,12 @@
       "barentswatch_client_secret_required": "A BarentsWatch client secret is required.",
       "invalid_auth": "Unable to authenticate with BarentsWatch. Check the Client ID and Client Secret.",
       "cannot_connect": "Unable to connect to BarentsWatch right now. Try again later.",
-      "invalid_options": "Please review the options and try again."
+      "invalid_options": "Please review the options and try again.",
+      "location_required": "You must select a location on the map.",
+      "invalid_location_format": "The location data format is invalid. Please try selecting the location again.",
+      "location_missing_coordinates": "The location is missing latitude and/or longitude. Please try selecting the location again.",
+      "location_outside_norway": "The selected location is outside Norwegian waters. Please select a location within Norway.",
+      "invalid_location_data": "There was an error processing the location. Please try selecting the location again."
     },
     "abort": {
       "already_configured": "This tracking area is already configured."
