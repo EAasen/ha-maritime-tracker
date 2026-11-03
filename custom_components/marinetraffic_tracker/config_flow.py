@@ -289,15 +289,23 @@ def _credentials_schema(defaults: dict[str, Any]) -> vol.Schema:
 def _radius_schema(hass: HomeAssistant, defaults: dict[str, Any]) -> vol.Schema:
     lat, lon = _default_coordinates(hass, defaults)
     radius_m = defaults.get(CONF_RADIUS_KM, DEFAULT_RADIUS_KM) * _METRES_PER_KM
+    
+    # Prepare default location value with coordinates and radius
+    default_location = {
+        "latitude": lat,
+        "longitude": lon,
+        "radius": radius_m,
+    }
+    
     return vol.Schema(
         {
             vol.Required(
                 _CONF_LOCATION,
+                default=default_location,
             ): selector.LocationSelector(
                 selector.LocationSelectorConfig(
                     radius=True,
                     icon="mdi:ferry",
-                    # Provide default center and radius for the location selector
                 ),
             ),
         },
