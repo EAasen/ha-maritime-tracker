@@ -12,23 +12,23 @@ Official Kystverket AIS maritime tracker for Home Assistant. Real-time vessel tr
 
 ---
 
-## 📢 Latest Release: v1.2.4
+## 📢 Latest Release: v1.2.5
+**Location Selection Validation Fix** - Fixed "not a valid option at location" error when submitting location selection.
+- ✅ Location selection now works end-to-end
+- ✅ Removed schema validation blocker
+- ✅ Map integration fully functional
+- See [v1.2.5 Release Notes](https://github.com/EAasen/ha-maritime-tracker/releases/tag/v1.2.5) for details.
+
+> **v1.2.4 Users**: If you got "not a valid option at 'location'" error, update to v1.2.5. This is a critical fix for location selection submission.
+
+---
+
+## 📢 Previous Release: v1.2.4
 **Location Selector Map Rendering Fix** - Fixed blank location selector pop-up issue.
 - ✅ Location selector map now displays properly on setup page
 - ✅ Map shows initial position centered on Norway
 - ✅ Users can now seamlessly select tracking area
 - See [v1.2.4 Release Notes](https://github.com/EAasen/ha-maritime-tracker/releases/tag/v1.2.4) for details.
-
-> **v1.2.3 Users**: Update to v1.2.4 if you experience a blank location selector pop-up with no map display. This fix ensures the map renders with proper initial coordinates.
-
----
-
-## 📢 Previous Release: v1.2.3
-**Location Validation Improvements** - Enhanced error messages and validation logic for better user experience during setup.
-- ✅ Clear, specific error messages when selecting location
-- ✅ Better guidance for configuration
-- ✅ Comprehensive test coverage
-- See [v1.2.3 Release Notes](RELEASE_v1.2.3_COMPLETE.md) for details.
 
 > **⚠️ v1.2.2 Activation Issue?** If you see `TypeError: async_register_command() got an unexpected keyword argument 'allow_user_context'`, see the [v1.2.2 Quick Fix Guide](README_v1.2.2_FIX.md) for a 5-minute solution. This is due to stale Python cache in your Home Assistant installation — a clean reinstall resolves it. **Resolved in v1.2.3.**
 
