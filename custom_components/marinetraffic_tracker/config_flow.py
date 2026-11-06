@@ -330,8 +330,28 @@ def _credentials_schema(defaults: dict[str, Any]) -> vol.Schema:
     )
 
 
+def _accept_location_dict(value: Any) -> dict[str, Any]:
+    """Permissive location validator that accepts any dict.
+    
+    This validator is used to bypass strict LocationSelector validation
+    in Home Assistant 2026.11.0+ while still using the selector for UI.
+    Actual validation happens in the handler.
+    """
+    if isinstance(value, dict):
+        return value
+    # If not a dict, try to coerce it
+    if value is None:
+        return {}
+    # For any other type, return it as-is and let handler deal with it
+    return value
+
+
 def _radius_schema(hass: HomeAssistant, defaults: dict[str, Any]) -> vol.Schema:
-    """Build the radius/location step schema with proper validation."""
+    """Build the radius/location step schema.
+    
+    Uses a permissive validator to bypass LocationSelector strict validation
+    in Home Assistant 2026.11.0+ while still rendering the map UI.
+    """
     return vol.Schema(
         {
             vol.Required(_CONF_LOCATION): vol.All(
@@ -341,7 +361,7 @@ def _radius_schema(hass: HomeAssistant, defaults: dict[str, Any]) -> vol.Schema:
                         icon="mdi:ferry",
                     ),
                 ),
-                _validate_location,
+                _accept_location_dict,
             ),
         },
     )
@@ -521,34 +541,63 @@ class MarineTrafficConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_radius(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Collect center coordinates and radius."""
         errors: dict[str, str] = {}
+        
         if user_input is not None:
             try:
+                # First check if location field exists
                 if _CONF_LOCATION not in user_input:
                     errors["base"] = "location_required"
                 else:
                     loc = user_input[_CONF_LOCATION]
                     
-                    # Validate location has required fields
-                    if not isinstance(loc, dict):
+                    # Handle None case (form shown but not submitted)
+                    if loc is None:
+                        errors["base"] = "location_required"
+                    # Validate location format
+                    elif not isinstance(loc, dict):
+                        _LOGGER.warning(
+                            "Location is not a dict, received type: %s, value: %s",
+                            type(loc),
+                            loc
+                        )
                         errors["base"] = "invalid_location_format"
+                    # Check for required fields
                     elif "latitude" not in loc or "longitude" not in loc:
+                        _LOGGER.warning(
+                            "Location missing coordinates. Keys: %s",
+                            list(loc.keys()) if isinstance(loc, dict) else "N/A"
+                        )
                         errors["base"] = "location_missing_coordinates"
-                    elif not _is_within_norway(loc.get("latitude"), loc.get("longitude")):
-                        errors["base"] = "location_outside_norway"
                     else:
-                        self._data[CONF_LATITUDE] = float(loc["latitude"])
-                        self._data[CONF_LONGITUDE] = float(loc["longitude"])
-                        
-                        # Handle radius - it might be in meters or might not be present
-                        radius = loc.get("radius")
-                        if radius is not None:
-                            self._data[CONF_RADIUS_KM] = float(radius) / _METRES_PER_KM
+                        # Validate within Norway
+                        try:
+                            lat = float(loc.get("latitude"))
+                            lon = float(loc.get("longitude"))
+                        except (ValueError, TypeError) as e:
+                            _LOGGER.warning("Failed to convert coordinates to float: %s", e)
+                            errors["base"] = "invalid_location_data"
                         else:
-                            self._data[CONF_RADIUS_KM] = DEFAULT_RADIUS_KM
-                        
-                        return await self.async_step_options()
-            except (KeyError, ValueError, TypeError) as err:
-                _LOGGER.debug("Error processing location: %s", err)
+                            if not _is_within_norway(lat, lon):
+                                errors["base"] = "location_outside_norway"
+                            else:
+                                # All validation passed, store data
+                                self._data[CONF_LATITUDE] = lat
+                                self._data[CONF_LONGITUDE] = lon
+                                
+                                # Handle radius - it might be in meters or might not be present
+                                radius = loc.get("radius")
+                                if radius is not None:
+                                    try:
+                                        self._data[CONF_RADIUS_KM] = float(radius) / _METRES_PER_KM
+                                    except (ValueError, TypeError):
+                                        self._data[CONF_RADIUS_KM] = DEFAULT_RADIUS_KM
+                                else:
+                                    self._data[CONF_RADIUS_KM] = DEFAULT_RADIUS_KM
+                                
+                                return await self.async_step_options()
+                                
+            except Exception as err:
+                _LOGGER.exception("Unexpected error in radius step: %s", err)
                 errors["base"] = "invalid_location_data"
 
         if errors:
