@@ -84,14 +84,27 @@ _VESSEL_TYPE_OPTIONS: list[selector.SelectOptionDict] = [
     for value, label in VESSEL_TYPE_LABELS.items()
 ]
 
+def _accept_any_value(value: Any) -> Any:
+    """Permissive validator that accepts any value.
+    
+    This is used to bypass strict selector validation in Home Assistant 2026.11.0+
+    while still using selectors for UI rendering.
+    All actual validation happens in the handler functions.
+    """
+    return value
+
+
 _STEP_INTRO_SCHEMA = vol.Schema({})
 _STEP_MODE_SCHEMA = vol.Schema(
     {
-        vol.Required(CONF_TRACKING_MODE, default=DEFAULT_TRACKING_MODE): selector.SelectSelector(
-            selector.SelectSelectorConfig(
-                options=_TRACKING_MODE_OPTIONS,
-                mode=selector.SelectSelectorMode.DROPDOWN,
-            )
+        vol.Required(CONF_TRACKING_MODE, default=DEFAULT_TRACKING_MODE): vol.All(
+            selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=_TRACKING_MODE_OPTIONS,
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            ),
+            _accept_any_value,
         ),
     }
 )
@@ -330,22 +343,6 @@ def _credentials_schema(defaults: dict[str, Any]) -> vol.Schema:
     )
 
 
-def _accept_location_dict(value: Any) -> dict[str, Any]:
-    """Permissive location validator that accepts any dict.
-    
-    This validator is used to bypass strict LocationSelector validation
-    in Home Assistant 2026.11.0+ while still using the selector for UI.
-    Actual validation happens in the handler.
-    """
-    if isinstance(value, dict):
-        return value
-    # If not a dict, try to coerce it
-    if value is None:
-        return {}
-    # For any other type, return it as-is and let handler deal with it
-    return value
-
-
 def _radius_schema(hass: HomeAssistant, defaults: dict[str, Any]) -> vol.Schema:
     """Build the radius/location step schema.
     
@@ -361,7 +358,7 @@ def _radius_schema(hass: HomeAssistant, defaults: dict[str, Any]) -> vol.Schema:
                         icon="mdi:ferry",
                     ),
                 ),
-                _accept_location_dict,
+                _accept_any_value,
             ),
         },
     )
@@ -416,12 +413,15 @@ def _options_schema(defaults: dict[str, Any]) -> vol.Schema:
             vol.Optional(
                 CONF_FILTER_VESSEL_TYPES,
                 default=defaults.get(CONF_FILTER_VESSEL_TYPES, []),
-            ): selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=_VESSEL_TYPE_OPTIONS,
-                    multiple=True,
-                    mode=selector.SelectSelectorMode.DROPDOWN,
-                )
+            ): vol.All(
+                selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=_VESSEL_TYPE_OPTIONS,
+                        multiple=True,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                _accept_any_value,
             ),
             vol.Required(
                 CONF_EXCLUDE_ANCHORED,
@@ -442,12 +442,15 @@ def _options_schema(defaults: dict[str, Any]) -> vol.Schema:
             vol.Required(
                 CONF_VESSEL_LOG_FORMAT,
                 default=defaults.get(CONF_VESSEL_LOG_FORMAT, DEFAULT_VESSEL_LOG_FORMAT),
-            ): selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=VESSEL_LOG_FORMATS,
-                    mode=selector.SelectSelectorMode.DROPDOWN,
-                    translation_key="vessel_log_format",
-                )
+            ): vol.All(
+                selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=VESSEL_LOG_FORMATS,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                        translation_key="vessel_log_format",
+                    )
+                ),
+                _accept_any_value,
             ),
             vol.Required(
                 CONF_VESSEL_LOG_RETENTION_DAYS,
