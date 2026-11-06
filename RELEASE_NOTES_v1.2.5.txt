@@ -1,0 +1,75 @@
+## 🐛 Bug Fixes
+
+### Location Validation Error FIXED
+Fixed critical issue where users were getting 'not a valid option at location' error when selecting a location on the map during config flow setup.
+
+**Root Cause:** Voluptuous schema validation was failing before the form handler could process the LocationSelector data.
+
+**Solution Implemented:**
+- Added dedicated _validate_location() function to properly validate location dictionary format
+- Updated _radius_schema() to use vol.All() chaining LocationSelector with validator
+- Removed complex default values that caused validation errors
+- Validator runs at schema validation time, preventing generic voluptuous errors
+
+**Changes:**
+- custom_components/marinetraffic_tracker/config_flow.py:
+  - Added _validate_location() validator function
+  - Updated _radius_schema() to use the validator
+  - Improved error handling in schema validation
+
+**Testing:**
+- ✅ Valid locations in Norwegian waters work correctly
+- ✅ Invalid locations show specific error messages
+- ✅ Missing coordinates handled gracefully
+- ✅ Out-of-range values properly validated
+- ✅ Backward compatible with existing configurations
+
+## 📋 What's New
+
+### Schema-Level Location Validation
+The location field now validates at schema submission time, providing:
+- Proper format checking (must be dictionary)
+- Type validation (latitude/longitude must be floats)
+- Range validation (lat: -90 to 90, lon: -180 to 180)
+- Radius validation (must be numeric if present)
+- Domain-specific validation (location must be in Norwegian waters)
+
+### Improved Error Messages
+Users now see clear, actionable error messages instead of generic validation errors:
+- 'You must select a location on the map'
+- 'The location data format is invalid'
+- 'The location is missing latitude and/or longitude'
+- 'The selected location is outside Norwegian waters'
+
+## 📚 Documentation
+
+Complete documentation of the fix has been added:
+- v1.2.5_LOCATION_FIX.md - Technical deep dive with code examples
+- v1.2.5_QUICK_FIX.md - User-friendly troubleshooting guide
+- FIX_SUMMARY_v1.2.5.md - Implementation summary and validation details
+
+## 🔄 Compatibility
+
+- ✅ Home Assistant 2026.10.4+
+- ✅ Backward compatible with existing configurations
+- ✅ No breaking changes
+- ✅ Works with fresh installations and upgrades
+
+## 🚀 How to Update
+
+**HACS Users:**
+1. Settings → Devices & Services → Integrations
+2. Find 'Norwegian Maritime Tracker'
+3. Click Update (when available)
+4. Restart Home Assistant
+
+**Manual Installation:**
+```bash
+cd ha-maritime-tracker
+git pull origin main
+# Restart Home Assistant
+```
+
+---
+
+Changelog: https://github.com/EAasen/ha-maritime-tracker/blob/main/docs/CHANGELOG.md
