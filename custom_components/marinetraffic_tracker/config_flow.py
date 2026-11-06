@@ -107,6 +107,50 @@ def _is_within_norway(latitude: float | None, longitude: float | None) -> bool:
     )
 
 
+def _validate_location(location: Any) -> dict[str, float]:
+    """Validate location dict from LocationSelector.
+    
+    Args:
+        location: A location dict with latitude, longitude, and optionally radius.
+    
+    Returns:
+        The validated location dict.
+    
+    Raises:
+        vol.Invalid: If the location format is invalid.
+    """
+    if not isinstance(location, dict):
+        raise vol.Invalid("Location must be a dictionary")
+    
+    if "latitude" not in location or "longitude" not in location:
+        raise vol.Invalid("Location must have latitude and longitude")
+    
+    try:
+        latitude = float(location["latitude"])
+        longitude = float(location["longitude"])
+    except (ValueError, TypeError) as err:
+        raise vol.Invalid("Latitude and longitude must be numbers") from err
+    
+    if latitude < -90 or latitude > 90:
+        raise vol.Invalid("Latitude must be between -90 and 90")
+    
+    if longitude < -180 or longitude > 180:
+        raise vol.Invalid("Longitude must be between -180 and 180")
+    
+    result = {
+        "latitude": latitude,
+        "longitude": longitude,
+    }
+    
+    if "radius" in location:
+        try:
+            result["radius"] = float(location["radius"])
+        except (ValueError, TypeError) as err:
+            raise vol.Invalid("Radius must be a number") from err
+    
+    return result
+
+
 def _validate_mmsi(value: str) -> str:
     """Validate and normalize a single MMSI string.
 
@@ -287,26 +331,17 @@ def _credentials_schema(defaults: dict[str, Any]) -> vol.Schema:
 
 
 def _radius_schema(hass: HomeAssistant, defaults: dict[str, Any]) -> vol.Schema:
-    lat, lon = _default_coordinates(hass, defaults)
-    radius_m = defaults.get(CONF_RADIUS_KM, DEFAULT_RADIUS_KM) * _METRES_PER_KM
-    
-    # Prepare default location value with coordinates and radius
-    default_location = {
-        "latitude": lat,
-        "longitude": lon,
-        "radius": radius_m,
-    }
-    
+    """Build the radius/location step schema with proper validation."""
     return vol.Schema(
         {
-            vol.Required(
-                _CONF_LOCATION,
-                default=default_location,
-            ): selector.LocationSelector(
-                selector.LocationSelectorConfig(
-                    radius=True,
-                    icon="mdi:ferry",
+            vol.Required(_CONF_LOCATION): vol.All(
+                selector.LocationSelector(
+                    selector.LocationSelectorConfig(
+                        radius=True,
+                        icon="mdi:ferry",
+                    ),
                 ),
+                _validate_location,
             ),
         },
     )
