@@ -1,0 +1,104 @@
+## 🔧 Home Assistant 2026.11.0+ Compatibility Fix
+
+### 🐛 Bug Fix
+
+Fixed critical issue where users on Home Assistant 2026.11.0+ were getting:
+```
+not a valid option at 'location'
+```
+
+When selecting a location on the map during config flow setup.
+
+**Root Cause:** Home Assistant 2026.11.0 introduced stricter validation for LocationSelector that conflicts with the previous schema validation approach.
+
+**Solution:** Implemented a permissive validator that:
+- Bypasses strict LocationSelector validation
+- Keeps the map UI widget working properly
+- Moves all validation to the handler with clear error messages
+- Compatible with all HA versions (2026.10.4+)
+
+### 📋 What's New
+
+#### New Permissive Validator
+- Added `_accept_location_dict()` function
+- Accepts any dictionary format from LocationSelector
+- Prevents voluptuous validation conflicts
+
+#### Improved Handler Validation
+- Comprehensive validation in `async_step_radius()`
+- Better logging for debugging
+- Specific error messages for each failure case
+
+#### Better Error Messages
+- "You must select a location on the map"
+- "The location is missing latitude/longitude"
+- "The selected location is outside Norwegian waters"
+- "There was an error processing the location"
+
+### 🔄 Compatibility
+
+- ✅ Home Assistant 2026.11.0 (NEW - now fixed!)
+- ✅ Home Assistant 2026.10.4+
+- ✅ Home Assistant 2026.10.5
+- ✅ Backward compatible with all versions
+- ✅ No breaking changes
+
+### 🚀 How to Update
+
+**HACS Users:**
+1. Settings → Devices & Services → Integrations
+2. Find "Norwegian Maritime Tracker"
+3. Click Update
+4. Restart Home Assistant
+
+**Manual Installation:**
+```bash
+cd ha-maritime-tracker
+git pull origin main
+# Restart Home Assistant
+```
+
+### 📝 Testing
+
+After updating:
+1. Create a new integration entry
+2. Select "Radius (map selector)"
+3. Click on the map to select a location
+4. Adjust radius if needed
+5. Click Submit → Should work now! ✅
+
+### 🔧 Technical Changes
+
+**File:** `custom_components/marinetraffic_tracker/config_flow.py`
+
+**Changes:**
+- Added `_accept_location_dict()` permissive validator
+- Updated `_radius_schema()` to use permissive validator
+- Enhanced `async_step_radius()` with detailed logging and error handling
+- Improved error message mapping
+
+### 📊 Release Info
+
+**Version:** 1.2.6  
+**Status:** Stable - Production Ready  
+**Released:** November 6, 2026  
+
+### ✅ Verified
+
+- [x] Fixes location validation error in HA 2026.11.0
+- [x] Map widget renders correctly
+- [x] Location selection works
+- [x] Error messages are clear and actionable
+- [x] Backward compatible with HA 2026.10.4+
+- [x] No breaking changes to configuration
+
+### 🔗 Related
+
+- Fixes: "not a valid option at 'location'" error
+- Previously: v1.2.5 partial fix for older HA versions
+- Updated: Handler and schema validation approach
+
+---
+
+**Changelog:** https://github.com/EAasen/ha-maritime-tracker/blob/main/docs/CHANGELOG.md  
+**Issues:** https://github.com/EAasen/ha-maritime-tracker/issues
