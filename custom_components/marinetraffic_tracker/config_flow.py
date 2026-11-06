@@ -330,14 +330,20 @@ def _credentials_schema(defaults: dict[str, Any]) -> vol.Schema:
             vol.Required(
                 CONF_BARENTSWATCH_CLIENT_ID,
                 default=defaults.get(CONF_BARENTSWATCH_CLIENT_ID, ""),
-            ): selector.TextSelector(
-                selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
+            ): vol.All(
+                selector.TextSelector(
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
+                ),
+                _accept_any_value,
             ),
             vol.Required(
                 CONF_BARENTSWATCH_CLIENT_SECRET,
                 default=defaults.get(CONF_BARENTSWATCH_CLIENT_SECRET, ""),
-            ): selector.TextSelector(
-                selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
+            ): vol.All(
+                selector.TextSelector(
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
+                ),
+                _accept_any_value,
             ),
         }
     )
